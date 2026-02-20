@@ -1,6 +1,8 @@
 # CloverUI☘️
 
-CloverUI is an Android application designed for local Large Language Model (LLM) inference. It provides a graphical interface to load and interact with GGUF format models entirely offline.
+CloverUI is an **Android** application designed for **local/offline Large** Language Model (LLM) inference. It provides a graphical interface to load and interact with GGUF format models entirely offline.
+
+[Download CloverUI Here](https://github.com/Spike8086/CloverUI/releases/download/v1.0.0/CloverUI_v1.0.0.apk)
 
 ## Features
 
@@ -16,7 +18,7 @@ CloverUI is an Android application designed for local Large Language Model (LLM)
 
 * Operating System: Android
 * SDK Requirements: Minimum SDK 28 (Android 9.0), Target SDK 35 (Android 15).
-* Inference Engine: The underlying text generation is powered by llama.cpp.
+* Inference Engine: The underlying text generation is powered by **llama.cpp**.
 
 ## Disclaimer
 
@@ -33,3 +35,14 @@ This application provides a framework for local computation only. CloverUI opera
   <img src="assets/Clover5.jpg" width="240" alt="Model Settings">
   <img src="assets/Clover8.jpg" width="240" alt="UI Customization">
 </p>
+
+## Acknowledgements
+
+CloverUI is built using the amazing work from:
+
+* **[llama.cpp](https://github.com/ggerganov/llama.cpp)**: Enables efficient inference of LLMs on local devices.
+* **[Capacitor](https://capacitorjs.com/)**: The cross-platform native runtime powering the mobile experience using web technologies.
+* **[marked](https://github.com/markedjs/marked)**: A low-level markdown compiler used for rendering chat responses.
+* **[mammoth.js](https://github.com/mwilliamson/mammoth.js)**: Enables text extraction and parsing from document (.docx) files.
+
+And many other open source libraries that make this project possible!
