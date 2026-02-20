@@ -1,0 +1,3236 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+<title>Clover</title>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600&family=Source+Serif+4:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+/* 保持你的 CSS 样式完全不变 */
+:root { --bg-page: #F3EDE5; --bg-chat: #FAF7F2; --bg-sidebar: #F3EDE5; --bg-input: #FFFFFF; --bg-user-bubble: #E8E0D5; --bg-hover: rgba(0,0,0,0.04); --text-primary: #1F1E1B; --text-secondary: #6B6560; --text-muted: #AEA89F; --accent: var(--accent); --border: #E2DBD1; --input-shadow: 0 1px 12px rgba(0,0,0,0.06); --scrollbar-thumb: #D5CFC5; }
+.dark { --bg-page: #191714; --bg-chat: #191714; --bg-sidebar: #191714; --bg-input: #2A2622; --bg-user-bubble: #35302B; --bg-hover: rgba(255,255,255,0.06); --text-primary: #E5DFD6; --text-secondary: #938E86; --text-muted: #5C5750; --border: #2E2A25; --input-shadow: 0 1px 12px rgba(0,0,0,0.25); --scrollbar-thumb: #3A3530; }
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, sans-serif; font-weight: 400; font-size: 15px; line-height: 1.6; background: var(--bg-page); color: var(--text-primary); height: 100dvh; overflow: hidden; transition: background 0.3s, color 0.3s; -webkit-font-smoothing: antialiased; }
+@media (min-width: 768px) { body { display: flex; } }
+.sidebar { position: fixed; left:0; top:0; bottom:0; width: 272px; background: var(--bg-sidebar); border-right: 1px solid var(--border); padding: 24px 16px; padding-top: calc(env(safe-area-inset-top) + 24px); display: flex; flex-direction: column; z-index: 200; transform: translateX(-100%); transition: transform 0.28s cubic-bezier(.4,0,.2,1), background 0.3s; }
+.sidebar.open { transform: translateX(0); }
+.overlay { position: fixed; inset:0; background: rgba(0,0,0,0.35); z-index: 199; opacity:0; pointer-events:none; transition: opacity 0.28s; }
+.overlay.show { opacity:1; pointer-events:all; }
+@media (min-width: 768px) { .sidebar { position:relative; transform:translateX(0); } .overlay { display:none; } .menu-btn { display:none !important; } }
+.sb-logo { font-family: 'Source Serif 4', 'Noto Sans SC', serif; font-size: 26px; font-weight: 400; letter-spacing: -0.3px; padding: 0 8px; margin-bottom: 28px; }
+.sb-item { display:flex; align-items:center; gap:12px; padding:13px 12px; border-radius:8px; font-size:15px; cursor:pointer; color:var(--text-primary); transition:background 0.12s; }
+.sb-item:hover { background:var(--bg-hover); }
+.sb-item.accent { color:var(--accent); font-weight:500; }
+.sb-item svg { width:20px; height:20px; flex-shrink:0; stroke-width:1.7; }
+.sb-item + .sb-item { margin-top:4px; }
+.sb-divider { height:1px; background:var(--border); margin:16px 4px; }
+.sb-label { font-size:12px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; padding:8px 12px 4px; }
+.sb-chat { padding:10px 12px; border-radius:8px; font-size:14.5px; cursor:pointer; color:var(--text-primary); transition:background 0.12s; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; -webkit-user-select:none; user-select:none; }
+.sb-chat:hover, .sb-chat.active { background:var(--bg-hover); }
+.sb-bottom { margin-top:auto; border-top:1px solid var(--border); padding-top:14px; display:flex; align-items:center; justify-content:space-between; }
+.sb-user { display:flex; align-items:center; gap:10px; cursor:pointer; padding:4px 6px; border-radius:8px; transition:background 0.12s; }
+.sb-user:hover { background:var(--bg-hover); }
+.sb-btns { display:flex; gap:2px; }
+.sb-avatar { width:30px; height:30px; border-radius:50%; background:#7B6FAF; display:flex; align-items:center; justify-content:center; color:#fff; font-size:13px; font-weight:600; flex-shrink:0; }
+.sb-name { font-size:14px; font-weight:500; }
+.sb-name-input { font-family:inherit; font-size:14px; font-weight:500; background:var(--bg-input); color:var(--text-primary); border:1px solid var(--accent); outline:none; border-radius:6px; padding:2px 8px; width:100px; }
+.sb-settings { width:32px; height:32px; border:none; background:none; cursor:pointer; display:flex; align-items:center; justify-content:center; border-radius:8px; color:var(--text-secondary); transition:all 0.12s; }
+.sb-settings:hover { background:var(--bg-hover); color:var(--text-primary); }
+.main { flex:1; min-width:0; height:100dvh; display:flex; flex-direction:column; background:var(--bg-chat); transition:background 0.3s; }
+.hdr { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; padding-top: calc(env(safe-area-inset-top) + 12px); flex-shrink:0; position:relative; }
+.hdr-left { display:flex; align-items:center; gap:8px; z-index:1; }
+.hdr-center { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); display:flex; align-items:center; }
+.menu-btn { width:36px; height:36px; border:none; background:none; cursor:pointer; display:flex; align-items:center; justify-content:center; border-radius:8px; color:var(--text-primary); transition:background 0.12s; }
+.menu-btn:hover { background:var(--bg-hover); }
+.model-sel { display:flex; align-items:center; gap:5px; font-size:16px; font-weight:600; cursor:pointer; padding:6px 10px; border-radius:8px; transition:background 0.12s; user-select:none; }
+.model-sel:hover { background:var(--bg-hover); }
+.model-sel svg { width:12px; height:12px; color:var(--text-secondary); }
+.hdr-right { display:flex; gap:4px; z-index:1; }
+.hdr-btn { width:34px; height:34px; border:none; background:none; cursor:pointer; display:flex; align-items:center; justify-content:center; border-radius:8px; color:var(--text-secondary); transition:all 0.12s; }
+.hdr-btn:hover { background:var(--bg-hover); color:var(--text-primary); }
+.chat-scroll { flex:1; overflow-y:auto; overflow-x:hidden; padding:0 16px; }
+.chat-scroll::-webkit-scrollbar { width:5px; }
+.chat-scroll::-webkit-scrollbar-track { background:transparent; }
+.chat-scroll::-webkit-scrollbar-thumb { background:var(--scrollbar-thumb); border-radius:3px; }
+.welcome { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; padding-bottom:60px; animation:fadeUp 0.5s ease; }
+@keyframes fadeUp { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
+.w-text { font-family:'Source Serif 4','Noto Sans SC',serif; font-size:26px; font-weight:400; text-align:center; line-height:1.35; }
+@media (min-width:768px) { .w-text{font-size:30px;} }
+.spark-svg { width:48px; height:48px; margin-bottom:18px; }
+.spark-svg line { stroke:var(--accent); stroke-width:3.6; stroke-linecap:round; }
+.msgs { max-width:700px; margin:0 auto; padding:16px 0 0px; display:none; }
+.msgs.active { display:block; }
+.msg { margin-bottom:20px; animation:msgIn 0.3s ease; }
+@keyframes msgIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+.msg-user { display:flex; justify-content:flex-end; }
+.msg-user .bubble { background:var(--bg-user-bubble); padding:10px 16px; border-radius:18px 18px 4px 18px; max-width:78%; font-size:15px; line-height:1.6; word-break:break-word; }
+.msg-ai { display:flex; gap:10px; align-items:flex-start; }
+.msg-ai .av { width:26px; height:26px; flex-shrink:0; margin-top:2px; }
+.msg-ai .av svg { width:100%; height:100%; }
+.msg-ai .body { flex:1; min-width:0; }
+.msg-ai .body .text { font-size:15px; line-height:1.7; word-break:break-word; }
+.msg-ai .body .text p { margin-bottom:10px; }
+.msg-ai .body .text p:last-child { margin-bottom:0; }
+.actions { display:flex; gap:2px; margin-top:6px; opacity:1; transition:opacity 0.18s; }
+.act-btn { width:28px; height:28px; border:none; background:none; cursor:pointer; display:flex; align-items:center; justify-content:center; border-radius:6px; color:var(--text-muted); transition:all 0.12s; position:relative; }
+.act-btn:hover { background:var(--bg-hover); color:var(--text-secondary); }
+.act-btn svg { width:15px; height:15px; }
+.act-btn .tip { position:absolute; bottom:110%; left:50%; transform:translateX(-50%); background:var(--text-primary); color:var(--bg-page); font-size:11px; padding:3px 8px; border-radius:4px; white-space:nowrap; pointer-events:none; opacity:0; transition:opacity 0.15s; }
+.act-btn .tip.show { opacity:1; }
+.disc { display:none; align-items:flex-start; justify-content:flex-end; gap:12px; padding:0 0 14px; font-size:12.5px; color:var(--text-muted); max-width:700px; margin:0 auto; line-height:1.5; opacity:0.55; }
+.disc.visible { display:flex; }
+.disc svg { flex-shrink:0; margin-top:2px; }
+.disc span { text-align:right; }
+.input-area { flex-shrink:0; padding:0 16px 16px; }
+.input-box { max-width:700px; margin:0 auto; background:var(--bg-input); border-radius:20px; box-shadow:var(--input-shadow); border:1px solid var(--border); transition:border-color 0.2s,box-shadow 0.2s,background 0.3s; overflow:hidden; }
+.input-box:focus-within { border-color:var(--accent); box-shadow:0 1px 16px rgba(217,119,86,0.1); }
+.input-top { padding:14px 16px 6px; }
+.chat-input { width:100%; border:none; outline:none; background:none; font-family:inherit; font-size:15px; color:var(--text-primary); resize:none; min-height:22px; max-height:140px; line-height:1.5; }
+.chat-input::placeholder { color:var(--text-muted); }
+.input-btm { display:flex; align-items:center; justify-content:space-between; padding:4px 8px 8px; }
+.input-l,.input-r { display:flex; gap:2px; }
+.in-btn { width:34px; height:34px; border:none; background:none; cursor:pointer; display:flex; align-items:center; justify-content:center; border-radius:10px; color:var(--text-secondary); transition:all 0.12s; }
+.in-btn:hover { background:var(--bg-hover); color:var(--text-primary); }
+.send-btn { width:36px; height:36px; border:none; background:var(--accent); cursor:pointer; display:flex; align-items:center; justify-content:center; border-radius:50%; color:#fff; transition:all 0.18s; opacity:0.25; pointer-events:none; }
+.send-btn.on { opacity:1; pointer-events:all; }
+.send-btn.on:hover { transform:scale(1.06); }
+@media (max-width:767px) { .input-area{padding:0 10px 10px;} .chat-scroll{padding:0 12px;} }
+.chats-page { position:fixed; inset:0; z-index:300; background:var(--bg-page); display:flex; flex-direction:column; transform:translateX(100%); transition:transform 0.3s cubic-bezier(.4,0,.2,1); }
+.chats-page.open { transform:translateX(0); }
+.cp-hdr { display:flex; align-items:center; justify-content:space-between; padding:16px 20px 8px; flex-shrink:0; }
+.cp-back { width:36px; height:36px; border:none; background:none; cursor:pointer; display:flex; align-items:center; justify-content:center; border-radius:8px; color:var(--text-primary); transition:background 0.12s; }
+.cp-back:hover { background:var(--bg-hover); }
+.cp-filter { width:36px; height:36px; border:none; background:none; cursor:pointer; display:flex; align-items:center; justify-content:center; border-radius:8px; color:var(--text-secondary); transition:background 0.12s; }
+.cp-filter:hover { background:var(--bg-hover); }
+.cp-title { font-family:'Source Serif 4','Noto Sans SC',serif; font-size:28px; font-weight:400; padding:4px 20px 12px; }
+.cp-search { margin:0 20px 12px; position:relative; }
+.cp-search svg { position:absolute; left:14px; top:50%; transform:translateY(-50%); width:18px; height:18px; color:var(--text-muted); pointer-events:none; }
+.cp-search input { width:100%; padding:10px 14px 10px 42px; border:1px solid var(--border); border-radius:12px; background:transparent; color:var(--text-primary); font-family:inherit; font-size:14px; outline:none; transition:border-color 0.2s; }
+.cp-search input::placeholder { color:var(--text-muted); }
+.cp-search input:focus { border-color:var(--accent); }
+.cp-list { flex:1; overflow-y:auto; padding:0 12px; }
+.cp-list::-webkit-scrollbar { width:5px; }
+.cp-list::-webkit-scrollbar-thumb { background:var(--scrollbar-thumb); border-radius:3px; }
+.cp-item { padding:14px 16px; border-radius:12px; cursor:pointer; transition:background 0.12s; position:relative; -webkit-user-select:none; user-select:none; }
+.cp-item:hover { background:var(--bg-hover); }
+.cp-item.selected { background:var(--bg-user-bubble); }
+.cp-item-title { font-size:15px; font-weight:500; line-height:1.4; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.cp-item-star { color:var(--accent); margin-left:6px; font-size:13px; }
+.cp-item-time { font-size:12.5px; color:var(--text-muted); margin-top:2px; }
+.cp-item-rename { font-family:inherit; font-size:15px; font-weight:500; background:var(--bg-input); color:var(--text-primary); border:1px solid var(--accent); outline:none; border-radius:6px; padding:2px 8px; width:100%; }
+.cp-empty { text-align:center; color:var(--text-muted); padding:40px 20px; font-size:14px; }
+.cp-fab { position:absolute; bottom:28px; right:24px; display:flex; align-items:center; gap:8px; background:var(--accent); color:#fff; border:none; border-radius:28px; padding:14px 24px 14px 18px; font-family:inherit; font-size:15px; font-weight:500; cursor:pointer; box-shadow:0 4px 16px rgba(217,119,86,0.35); transition:transform 0.15s, box-shadow 0.15s; }
+.cp-fab:hover { transform:scale(1.03); box-shadow:0 6px 20px rgba(217,119,86,0.4); }
+.cp-fab svg { width:20px; height:20px; }
+.ctx-menu { position:fixed; z-index:400; background:var(--bg-input); border:1px solid var(--border); border-radius:12px; padding:6px 0; box-shadow:0 4px 24px rgba(0,0,0,0.12); min-width:170px; opacity:0; pointer-events:none; transform:scale(0.92); transform-origin:top right; transition:opacity 0.15s, transform 0.15s; }
+.ctx-menu.show { opacity:1; pointer-events:all; transform:scale(1); }
+.ctx-item { display:flex; align-items:center; justify-content:space-between; padding:10px 16px; cursor:pointer; font-size:14.5px; color:var(--text-primary); transition:background 0.1s; }
+.ctx-item:hover { background:var(--bg-hover); }
+.ctx-item svg { width:18px; height:18px; color:var(--text-secondary); flex-shrink:0; }
+.ctx-item.danger { color:#D94F4F; }
+.ctx-item.danger svg { color:#D94F4F; }
+.del-overlay { position:fixed; inset:0; z-index:500; background:rgba(0,0,0,0.4); display:none; align-items:center; justify-content:center; }
+.del-overlay.show { display:flex; }
+.del-dialog { background:var(--bg-input); border-radius:16px; padding:24px; max-width:320px; width:90%; box-shadow:0 8px 32px rgba(0,0,0,0.2); animation:fadeScale 0.2s ease; }
+@keyframes fadeScale { from{opacity:0;transform:scale(0.95)} to{opacity:1;transform:scale(1)} }
+.del-dialog h3 { font-size:16px; font-weight:600; margin-bottom:8px; }
+.del-dialog p { font-size:14px; color:var(--text-secondary); margin-bottom:20px; line-height:1.5; }
+.del-btns { display:flex; gap:10px; justify-content:flex-end; }
+.del-btn { padding:8px 20px; border-radius:10px; border:none; font-family:inherit; font-size:14px; font-weight:500; cursor:pointer; transition:all 0.12s; }
+.del-btn.cancel { background:var(--bg-hover); color:var(--text-primary); }
+.del-btn.cancel:hover { background:var(--border); }
+.del-btn.confirm { background:#D94F4F; color:#fff; }
+.del-btn.confirm:hover { background:#C04040; }
+.sheet-overlay { position:fixed; inset:0; z-index:500; background:rgba(0,0,0,0.4); opacity:0; pointer-events:none; transition:opacity 0.25s; }
+.sheet-overlay.show { opacity:1; pointer-events:all; }
+.sheet { position:fixed; left:0; right:0; bottom:0; z-index:501; background:var(--bg-input); border-radius:20px 20px 0 0; padding:0 0 34px; transform:translateY(100%); transition:transform 0.35s cubic-bezier(.4,0,.2,1); max-height:70vh; }
+.sheet.show { transform:translateY(0); }
+.sheet-handle { width:36px; height:4px; border-radius:2px; background:var(--border); margin:10px auto 6px; }
+.sheet-hdr { display:flex; align-items:center; justify-content:space-between; padding:8px 20px 12px; }
+.sheet-title { font-size:16px; font-weight:600; }
+.sheet-close { width:32px; height:32px; border:none; background:none; cursor:pointer; display:flex; align-items:center; justify-content:center; border-radius:50%; color:var(--text-secondary); transition:background 0.12s; }
+.sheet-close:hover { background:var(--bg-hover); }
+.model-option { display:flex; align-items:center; justify-content:space-between; padding:14px 24px; cursor:pointer; transition:background 0.1s; }
+.model-option:hover { background:var(--bg-hover); }
+.model-option.selected .mo-name { color:var(--accent); font-weight:600; }
+.mo-info { display:flex; flex-direction:column; }
+.mo-name { font-size:15px; font-weight:500; }
+.mo-desc { font-size:12.5px; color:var(--text-muted); margin-top:1px; }
+.mo-check { width:20px; height:20px; color:var(--accent); }
+.sheet-divider { height:1px; background:var(--border); margin:4px 20px; }
+.toggle-row { display:flex; align-items:center; justify-content:space-between; padding:14px 24px; }
+.toggle-info { display:flex; flex-direction:column; }
+.toggle-label { font-size:15px; font-weight:500; }
+.toggle-desc { font-size:12.5px; color:var(--text-muted); margin-top:1px; }
+.toggle-switch { width:44px; height:26px; border-radius:13px; border:none; background:var(--border); cursor:pointer; position:relative; transition:background 0.2s; }
+.toggle-switch.on { background:#4A90D9; }
+.toggle-switch::after { content:''; position:absolute; top:3px; left:3px; width:20px; height:20px; border-radius:50%; background:#fff; transition:transform 0.2s; box-shadow:0 1px 3px rgba(0,0,0,0.2); }
+.toggle-switch.on::after { transform:translateX(18px); }
+.hdr-menu { position:fixed; z-index:400; background:var(--bg-input); border:1px solid var(--border); border-radius:12px; padding:6px 0; box-shadow:0 4px 24px rgba(0,0,0,0.12); min-width:200px; opacity:0; pointer-events:none; transform:scale(0.92); transform-origin:top right; transition:opacity 0.15s, transform 0.15s; }
+.hdr-menu.show { opacity:1; pointer-events:all; transform:scale(1); }
+.hdr-menu-title { padding:10px 16px 6px; font-size:13px; font-weight:500; color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.hdr-menu-divider { height:1px; background:var(--border); margin:4px 0; }
+.model-sel .model-ext { font-weight:400; color:var(--text-secondary); margin-left:2px; }
+.msg-sheet-ov { position:fixed; inset:0; z-index:500; background:rgba(0,0,0,0.4); opacity:0; pointer-events:none; transition:opacity 0.25s; }
+.msg-sheet-ov.show { opacity:1; pointer-events:all; }
+.msg-sheet { position:fixed; left:0; right:0; bottom:0; z-index:501; background:var(--bg-input); border-radius:20px 20px 0 0; padding:8px 0 34px; transform:translateY(100%); transition:transform 0.3s cubic-bezier(.4,0,.2,1); }
+.msg-sheet.show { transform:translateY(0); }
+.msg-sheet-handle { width:36px; height:4px; border-radius:2px; background:var(--border); margin:6px auto 8px; }
+.msg-sheet-item { display:flex; align-items:center; gap:16px; padding:16px 28px; cursor:pointer; font-size:16px; color:var(--text-primary); transition:background 0.1s; }
+.msg-sheet-item:hover { background:var(--bg-hover); }
+.msg-sheet-item svg { width:22px; height:22px; color:var(--text-muted); flex-shrink:0; }
+.edit-banner { display:none; padding:12px 20px; font-size:14px; color:var(--text-secondary); max-width:700px; margin:0 auto; animation:msgIn 0.3s ease; }
+.edit-banner.show { display:block; }
+.edit-bar { display:none; align-items:center; gap:8px; padding:8px 16px; border-bottom:1px solid var(--border); font-size:13px; color:var(--text-muted); }
+.edit-bar.show { display:flex; }
+.edit-bar svg { width:14px; height:14px; flex-shrink:0; }
+.edit-bar span { flex:1; }
+.edit-bar-close { width:24px; height:24px; border:none; background:none; cursor:pointer; display:flex; align-items:center; justify-content:center; border-radius:50%; color:var(--text-muted); transition:all 0.12s; }
+.edit-bar-close:hover { background:var(--bg-hover); color:var(--text-primary); }
+.msg-user .bubble { cursor:pointer; transition:background 0.15s; }
+.msg-user .bubble:active { opacity:0.8; }
+.settings-sheet { position:fixed; left:0; right:0; bottom:0; z-index:501; background:var(--bg-input); border-radius:20px 20px 0 0; padding:0 0 34px; max-height:80vh; overflow-y:auto; transform:translateY(100%); transition:transform 0.35s cubic-bezier(.4,0,.2,1); }
+.settings-sheet.show { transform:translateY(0); }
+.set-section { padding:6px 0; }
+.set-label { font-size:12px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; padding:12px 24px 6px; }
+.set-item { display:flex; align-items:center; justify-content:space-between; padding:14px 24px; cursor:pointer; transition:background 0.1s; }
+.set-item:hover { background:var(--bg-hover); }
+.set-item-left { display:flex; align-items:center; gap:14px; }
+.set-item-left svg { width:20px; height:20px; color:var(--text-secondary); }
+.set-item-label { font-size:15px; }
+.set-item-val { font-size:13px; color:var(--text-muted); }
+
+/* ── AI Message Font Tuning (强制生效版) ── */
+.msg-ai .text {
+  /* 1. 回退字体：使用无衬线体 (Noto Sans SC) */
+  font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, sans-serif !important;
+  
+  /* 2. 强制加大字号 (原 15px -> 16px) */
+  font-size: 16px !important; 
+  
+  /* 3. 调整行高，阅读更舒适 */
+  line-height: 1.65 !important;
+  
+  /* 颜色保持 */
+  color: var(--text-primary);
+  overflow-wrap: break-word;
+}
+
+/* 针对段落 p 标签也强制设置 */
+.msg-ai .text p {
+  font-size: 17px !important;
+  margin-bottom: 0.8em;
+}
+
+/* 针对代码块，保持等宽字体 */
+.msg-ai .text pre, .msg-ai .text code {
+  font-family: 'Menlo', 'Monaco', 'Consolas', monospace !important;
+  font-size: 14px !important; /* 代码稍微小一点 */
+}
+/* 行内代码 */
+.msg-ai .text code {
+  font-family: 'Menlo', 'Monaco', 'Consolas', monospace;
+  background: rgba(0,0,0,0.06); color: var(--accent);
+  padding: 2px 5px; border-radius: 4px; font-size: 0.9em;
+}
+/* 深色模式下的行内代码 */
+.dark .msg-ai .text code { background: rgba(255,255,255,0.1); color: #FF9E7A; }
+
+/* 避免代码块内的 code 再有背景 */
+.msg-ai .text pre code {
+  background: none; color: inherit; padding: 0;
+}
+
+/* 列表 */
+.msg-ai .text ul, .msg-ai .text ol { margin: 0 0 10px 20px; padding: 0; }
+.msg-ai .text li { margin-bottom: 4px; }
+
+/* 标题 */
+.msg-ai .text h1, .msg-ai .text h2, .msg-ai .text h3 {
+  font-weight: 600; margin-top: 1.2em; margin-bottom: 0.6em; line-height: 1.3;
+}
+.msg-ai .text h1 { font-size: 1.4em; }
+.msg-ai .text h2 { font-size: 1.2em; }
+
+/* ── Updated Button Styles ── */
+.send-btn {
+  width:36px; height:36px; border:none;
+  background: var(--accent); /* 默认用主题色 */
+  cursor:pointer; display:flex; align-items:center; justify-content:center;
+  border-radius:50%; color:#fff;
+  transition:all 0.18s; opacity:0.25; pointer-events:none;
+}
+/* 当输入框有字时（可发送状态） */
+.send-btn.on { opacity:1; pointer-events:all; }
+.send-btn.on:hover { transform:scale(1.06); }
+
+/* 当正在生成时（可停止状态） - 模仿 Clover App */
+.send-btn.typing {
+  opacity: 1; pointer-events: all;
+  background: var(--text-primary); /* 停止按钮通常是深色/对比色 */
+}
+.send-btn.typing:hover { opacity: 0.9; transform:scale(1.06); }
+
+/* 停止图标 (实心方块) */
+.stop-icon { fill: currentColor; }
+
+/* 1. 移除消息气泡左侧的头像 */
+.msg-ai .av { display: none !important; }
+
+/* 2. 调整 AI 消息的边距，因为没了头像，不需要左边距了 */
+.msg-ai { gap: 0; display: block; } /* 变为块级元素 */
+.msg-ai .body { max-width: 100%; }
+
+/* ── 底部状态栏 (最终修复版) ── */
+.disc {
+  position: relative;
+  display: flex;
+  align-items: center; 
+  justify-content: space-between; /* 图标左，文字右 */
+  padding: 12px 4px 24px;
+  margin: 0 auto;
+  max-width: 700px;
+  width: 100%;
+  color: var(--text-muted);
+  font-size: 12.5px;
+  min-height: 40px;
+  
+  /* 默认隐藏，JS 控制显示 */
+  opacity: 0; 
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+
+/* 显示状态 */
+.disc.visible {
+  opacity: 1;
+  pointer-events: all;
+}
+
+/* 左侧图标容器 */
+.disc-left {
+  display: flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; flex-shrink: 0;
+}
+
+/* 图标本体 - 核心修复：加大尺寸 + 强制颜色 */
+.disc-icon {
+  width: 26px !important;  /* 加大 */
+  height: 26px !important;
+  color: var(--accent);    /* 始终橘红 */
+  transition: transform 0.3s;
+}
+
+/* SVG 线条颜色继承 */
+.disc-icon line {
+  stroke: currentColor;
+  stroke-width: 3.5;
+  stroke-linecap: round;
+}
+
+/* 生成时：仅旋转，颜色保持橘红不变 */
+.disc.typing .disc-icon {
+  animation: spin 1s linear infinite;
+  color: var(--accent) !important; /* 强制保持橘红 */
+}
+
+/* 右侧文字 */
+.disc-text {
+  text-align: right;
+  opacity: 0.6;
+  transition: opacity 0.2s, transform 0.2s;
+  margin-left: 12px;
+}
+
+/* 生成时：隐藏文字 (核心修复) */
+.disc.typing .disc-text {
+  opacity: 0 !important;
+  transform: translateX(5px); /* 给个小位移效果 */
+  pointer-events: none;
+}
+
+/* 旋转动画 */
+@keyframes spin { 
+  from { transform: rotate(0deg); } 
+  to { transform: rotate(360deg); } 
+}
+
+.chat-scroll {
+  padding-bottom: 20px; 
+}
+
+/* ── Settings Inputs ── */
+.set-item-col {
+  padding: 12px 24px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.set-input-label {
+  font-size: 14px; font-weight: 500; color: var(--text-primary);
+}
+.set-input, .set-input-area {
+  width: 100%;
+  background: var(--bg-page);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-family: inherit; font-size: 14px; color: var(--text-primary);
+  outline: none; transition: border-color 0.2s;
+}
+.set-input:focus, .set-input-area:focus {
+  border-color: var(--accent);
+}
+.set-input-desc {
+  font-size: 12px; color: var(--text-muted); line-height: 1.4;
+}
+/* 调整文本域不可拖拽调整大小 */
+.set-input-area { resize: none; }
+
+.set-input-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+.set-input-group label { font-size: 13px; color: var(--text-secondary); font-weight: 500; }
+.set-input-group input { 
+    background: transparent; border: 1px solid var(--border); border-radius: 8px; 
+    padding: 10px 12px; color: var(--text-primary); font-size: 15px; outline: none; transition: border-color 0.2s;
+}
+.set-input-group input:focus { border-color: var(--accent); }
+.set-desc { font-size: 12px; color: var(--text-muted); margin-top: -2px; }
+.set-input-group { display: flex; flex-direction: column; gap: 6px; margin: 0 24px 16px; }
+/* === 请将这段代码添加到 <style> 标签的末尾 === */
+
+/* 1. 重构设置面板，使其支持 Flex 布局和内部滚动 */
+.settings-sheet {
+  display: flex;
+  flex-direction: column;
+  max-height: 85vh; /* 限制最大高度 */
+  height: auto;
+  padding: 0; /* 清除默认内边距 */
+}
+
+/* 2. 新增：内容滚动容器 (包裹所有设置项) */
+.sheet-scroll-content {
+  flex: 1;           /* 占满剩余空间 */
+  overflow-y: auto;  /* 允许垂直滚动 */
+  padding-bottom: 40px; /* 底部留白 */
+}
+
+/* 3. 新增：模型列表的容器样式 */
+.model-list-box {
+  max-height: 180px; /* 限制列表高度 */
+  overflow-y: auto;  /* 列表内部也可以滚动 */
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin: 0 24px 16px; 
+  background: var(--bg-page);
+  min-height: 50px; /* 确保有最小高度，防止看不到 */
+}
+
+/* 4. 新增：导入按钮样式 */
+.import-btn-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  margin: 0 24px 20px;
+  border: 1px dashed var(--accent);
+  border-radius: 8px;
+  color: var(--accent);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.import-btn-row:active { background: var(--bg-hover); }
+
+/* ── 美化原生颜色选择器 ── */
+.color-picker-input {
+  -webkit-appearance: none;
+  border: none;
+  width: 34px; 
+  height: 34px;
+  border-radius: 50%;
+  padding: 0;
+  overflow: hidden;
+  cursor: pointer;
+  background: transparent;
+}
+.color-picker-input::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+.color-picker-input::-webkit-color-swatch {
+  border: none;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px var(--bg-page), 0 0 0 3px var(--border);
+}
+
+/* --- Settings Page (Full Screen Mode) --- */
+.settings-sheet {
+  /* 1. 定位与层级 */
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000; /* 提高层级，确保在最上层 */
+  
+  /* 2. 强制铺满尺寸 */
+  width: 100vw;
+  height: 100dvh !important; /* 使用 dvh 适应移动端动态高度 */
+  max-height: none !important; /* 【关键】取消原本的 80vh 高度限制 */
+  margin: 0 !important;
+  border-radius: 0 !important; /* 【关键】取消底部的圆角 */
+  
+  /* 3. 背景与布局 */
+  background: var(--bg-page);
+  display: flex;
+  flex-direction: column;
+  
+  /* 4. 进出场动画 */
+  transform: translateX(100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.settings-sheet.show {
+  transform: translateX(0);
+}
+
+/* 头部样式 */
+.settings-sheet .sheet-hdr {
+  padding: 16px 20px;
+  /* 适配刘海屏/灵动岛顶部安全区域 */
+  padding-top: calc(16px + env(safe-area-inset-top)); 
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-page);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+/* 隐藏原本的拖拽条 */
+.settings-sheet .sheet-handle {
+  display: none !important;
+}
+
+/* 滚动区域 */
+.settings-scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* 适配底部手势条安全区域 */
+  padding-bottom: calc(40px + env(safe-area-inset-bottom)); 
+  -webkit-overflow-scrolling: touch; /* iOS 滚动回弹流畅 */
+}
+
+.settings-scroll-area::-webkit-scrollbar { width: 5px; }
+.settings-scroll-area::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 3px; }
+
+/* AI 消息底部的测速数据块 */
+.msg-stats {
+  font-family: 'Menlo', 'Monaco', 'Consolas', monospace;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 8px;
+  text-align: left;
+  opacity: 0.6;
+}
+
+/* ── 自定义弹窗与加载进度条 ── */
+@keyframes progressIndeterminate {
+  0% { left: -50%; width: 50%; }
+  100% { left: 100%; width: 50%; }
+}
+.ui-dialog-input {
+  width: 100%; padding: 12px; border: 2px solid var(--border); border-radius: 10px; 
+  background: var(--bg-page); color: var(--text-primary); outline: none; 
+  font-family: inherit; font-size: 15px; margin-bottom: 20px; transition: border-color 0.2s;
+}
+.ui-dialog-input:focus { border-color: var(--accent); }
+
+
+/* ── 文件附件胶囊 UI ── */
+.file-attachment-bar {
+  display: none; padding: 12px 16px 0; gap: 8px; flex-wrap: wrap;
+}
+.file-capsule {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--bg-page); border: 1px solid var(--border);
+  padding: 4px 10px 4px 12px; border-radius: 16px; font-size: 13px;
+  color: var(--text-primary); max-width: 100%; transition: all 0.2s;
+}
+.file-capsule.error {
+  border-color: #D94F4F; background: rgba(217,79,79,0.06);
+}
+.file-capsule-name {
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px; font-weight: 500;
+}
+.file-capsule-tokens {
+  color: var(--text-muted); font-family: 'Menlo', monospace; font-size: 11px;
+  background: var(--bg-hover); padding: 2px 6px; border-radius: 10px;
+}
+.file-capsule.error .file-capsule-tokens {
+  color: #D94F4F; background: rgba(217,79,79,0.15);
+}
+.file-remove {
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  color: var(--text-muted); border-radius: 50%; width: 20px; height: 20px; transition: all 0.2s;
+}
+.file-remove:hover { background: var(--bg-hover); color: var(--text-primary); }
+.file-capsule.error .file-remove:hover { color: #D94F4F; background: rgba(217,79,79,0.15); }
+
+/* ── Thinking Process UI (思考过程折叠面板) ── */
+.think-box {
+  margin: 12px 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-input);
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+.think-summary {
+  padding: 10px 14px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  user-select: none;
+  background: var(--bg-page);
+  border-bottom: 1px solid transparent;
+}
+.think-box[open] .think-summary {
+  border-bottom-color: var(--border);
+}
+.think-summary:hover {
+  background: var(--bg-hover);
+}
+/* 隐藏原生箭头 */
+.think-summary::-webkit-details-marker { display: none; }
+.think-summary::marker { content: none; }
+
+/* 自定义折叠箭头 */
+.think-summary::before {
+  content: '';
+  display: inline-block;
+  width: 0; height: 0;
+  border-style: solid;
+  border-width: 4px 0 4px 6px;
+  border-color: transparent transparent transparent var(--text-secondary);
+  transition: transform 0.2s;
+  margin-right: 2px;
+}
+.think-box[open] .think-summary::before {
+  transform: rotate(90deg);
+}
+.think-content {
+  padding: 12px 16px;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+/* 强制缩小思考过程的字号，与正文区分 */
+.think-content p, .think-content div, .think-content span {
+  font-size: 14px !important; 
+  margin-bottom: 8px;
+}
+.think-content p:last-child {
+  margin-bottom: 0;
+}
+/* 呼吸灯动画 */
+.think-pulse {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: think-pulse 0.8s infinite alternate;
+  margin-left: 2px;
+}
+@keyframes think-pulse { 
+  0% { opacity: 0.2; transform: scale(0.8); } 
+  100% { opacity: 1; transform: scale(1.2); } 
+}
+
+/* ── AI Message Font Tuning (强制生效版) ── */
+.msg-ai .text {
+  /* 1. 优先使用 Source Serif 4 渲染英文，中文自动回退到 Noto Sans SC */
+  font-family: 'Source Serif 4', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, sans-serif !important;
+  
+  /* 2. 强制加大字号 (原 15px -> 16px) */
+  font-size: 16px !important; 
+  
+  /* 3. 调整行高，阅读更舒适 */
+  line-height: 1.65 !important;
+  
+  /* 颜色保持 */
+  color: var(--text-primary);
+  overflow-wrap: break-word;
+}
+
+/* ── 專屬導入選項卡片按鈕 ── */
+.import-opt-btn {
+  background: var(--bg-page);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+.import-opt-btn:active, .import-opt-btn:hover {
+  background: var(--bg-hover);
+  border-color: var(--accent);
+}
+.import-opt-btn .opt-title {
+  font-size: 15.5px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.import-opt-btn .opt-desc {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+</style>
+</head>
+<body class="dark">
+
+<!-- Overlay -->
+<div class="overlay" id="ov" onclick="toggleSB()"></div>
+
+<!-- Sidebar -->
+<aside class="sidebar" id="sb">
+  <div class="sb-logo" style="display: flex; align-items: center; gap: 4px;">
+  CloverUI
+  <svg viewBox="0 0 68 68" width="24" height="24">
+    <g transform="translate(34,34)" fill="var(--accent)">
+      <path d="M 0 0 C -8 -8, -18 -12, -18 -22 C -18 -30, -8 -30, 0 -22 C 8 -30, 18 -30, 18 -22 C 18 -12, 8 -8, 0 0 Z" transform="translate(0, -2)"/>
+      <path d="M 0 0 C -8 -8, -18 -12, -18 -22 C -18 -30, -8 -30, 0 -22 C 8 -30, 18 -30, 18 -22 C 18 -12, 8 -8, 0 0 Z" transform="rotate(120) translate(0, -2)"/>
+      <path d="M 0 0 C -8 -8, -18 -12, -18 -22 C -18 -30, -8 -30, 0 -22 C 8 -30, 18 -30, 18 -22 C 18 -12, 8 -8, 0 0 Z" transform="rotate(240) translate(0, -2)"/>
+    </g>
+  </svg>
+</div>
+  <div class="sb-item accent" onclick="resetChat()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+    <span data-i18n="new_chat">新对话</span>
+  </div>
+  <div class="sb-item" onclick="openChatsPage()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+  <span data-i18n="chat_history">对话记录</span> </div>
+  <div class="sb-divider"></div>
+  <div class="sb-label" data-i18n="sb_recents">Recents</div>
+  <div class="sb-chats" id="sbChats"></div>
+  <div class="sb-bottom">
+    <div class="sb-user" onclick="openUserProfile()" data-i18n-title="tooltip_profile" title="点击修改个人档案">
+      <div class="sb-avatar" id="userAvatar">J</div>
+      <span class="sb-name" id="userName">User</span>
+    </div>
+    <div class="sb-btns">
+      <button class="sb-settings" onclick="toggleTheme()" data-i18n-title="tooltip_theme" title="切换亮/暗模式">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      </button>
+      <button class="sb-settings" onclick="openSettings()" data-i18n-title="tooltip_settings" title="设置">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+    </div>
+  </div>
+</aside>
+
+<main class="main">
+  <header class="hdr">
+    <div class="hdr-left">
+      <button class="menu-btn" onclick="toggleSB()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="14" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="hdr-center">
+      <div class="model-sel" onclick="openModelSheet()">
+        <span id="modelName">Please Import Model</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+    </div>
+    <div class="hdr-right">
+      <button class="hdr-btn" data-i18n-title="new_chat" title="新对话" onclick="resetChat()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+      <button class="hdr-btn" id="hdrDotsBtn" title="更多" onclick="toggleHdrMenu(event)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="chat-scroll" id="scroll">
+    <div class="welcome" id="welcome">
+      <svg class="spark-svg" viewBox="0 0 68 68">
+        <g transform="translate(34,34)" fill="var(--accent)">
+          <path d="M 0 0 C -8 -8, -18 -12, -18 -22 C -18 -30, -8 -30, 0 -22 C 8 -30, 18 -30, 18 -22 C 18 -12, 8 -8, 0 0 Z" transform="translate(0, -2)"/>
+          <path d="M 0 0 C -8 -8, -18 -12, -18 -22 C -18 -30, -8 -30, 0 -22 C 8 -30, 18 -30, 18 -22 C 18 -12, 8 -8, 0 0 Z" transform="rotate(120) translate(0, -2)"/>
+          <path d="M 0 0 C -8 -8, -18 -12, -18 -22 C -18 -30, -8 -30, 0 -22 C 8 -30, 18 -30, 18 -22 C 18 -12, 8 -8, 0 0 Z" transform="rotate(240) translate(0, -2)"/>
+        </g>
+      </svg>
+      <div class="w-text" data-i18n="welcome_msg">有什么可以帮你的吗？</div>
+    </div>
+    <div class="msgs" id="msgs"></div>
+    <div class="edit-banner" id="editBanner" data-i18n="editing_banner">Editing this message will restart the conversation from this point.</div>
+    <div class="disc" id="disc">
+  <div class="disc-left">
+    <svg class="disc-icon" viewBox="0 0 68 68">
+      <g transform="translate(34,34)" fill="var(--accent)">
+        <path d="M 0 0 C -8 -8, -18 -12, -18 -22 C -18 -30, -8 -30, 0 -22 C 8 -30, 18 -30, 18 -22 C 18 -12, 8 -8, 0 0 Z" transform="translate(0, -2)"/>
+        <path d="M 0 0 C -8 -8, -18 -12, -18 -22 C -18 -30, -8 -30, 0 -22 C 8 -30, 18 -30, 18 -22 C 18 -12, 8 -8, 0 0 Z" transform="rotate(120) translate(0, -2)"/>
+        <path d="M 0 0 C -8 -8, -18 -12, -18 -22 C -18 -30, -8 -30, 0 -22 C 8 -30, 18 -30, 18 -22 C 18 -12, 8 -8, 0 0 Z" transform="rotate(240) translate(0, -2)"/>
+      </g>
+    </svg>
+  </div>
+  <!-- 使用 data-i18n 绑定词典 -->
+  <span class="disc-text" data-i18n="chat_disclaimer">Clover 可能会犯错。请核实重要信息。</span>
+</div>
+  </div>
+
+  <div class="input-area">
+    <div class="input-box">
+      <div class="edit-bar" id="editBar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        <span data-i18n="editing_msg">Editing message</span>
+        <button class="edit-bar-close" onclick="cancelEdit()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      
+      <div class="file-attachment-bar" id="fileAttachmentBar"></div>
+      
+      <div class="input-top">
+        <textarea class="chat-input" id="inp" data-i18n-placeholder="input_placeholder" placeholder="和 Clover 聊聊…" rows="1"
+          oninput="autoResize(this);toggleSendBtn()"
+          onkeydown="handleKey(event)"></textarea>
+      </div>
+      <div class="input-btm">
+        <div class="input-l">
+          <input type="file" id="fileInput" accept=".txt,.docx" style="display:none;" onchange="handleFileSelect(event)">
+          <button class="in-btn" title="附件" onclick="document.getElementById('fileInput').click()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+        </div>
+        <div class="input-r">
+          <button class="in-btn" title="语音">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="9" y="1" width="6" height="12" rx="3"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+          </button>
+          <button class="send-btn" id="sendBtn" onclick="handleSendClick()">
+  <!-- 图标由 JS 动态生成 -->
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- Chats Page -->
+<div class="chats-page" id="chatsPage">
+  <div class="cp-hdr">
+    <button class="cp-back" onclick="closeChatsPage()">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="14" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <button class="cp-filter" data-i18n-title="tooltip_filter" title="筛选">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/><polyline points="18 4 20 6 18 8"/></svg>
+    </button>
+  </div>
+  <div class="cp-title" data-i18n="chats_title">Chats</div>
+  <div class="cp-search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input type="text" id="cpSearchInput" data-i18n-placeholder="search_chats" placeholder="Search Chats" oninput="filterChats()">
+  </div>
+  <div class="cp-list" id="cpList"></div>
+  <button class="cp-fab" onclick="newChatFromChatsPage()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    <span data-i18n="new_chat_btn">New chat</span>
+  </button>
+</div>
+
+<!-- Context Menu -->
+<div class="ctx-menu" id="ctxMenu">
+  <div class="ctx-item" data-action="rename" onclick="ctxAction('rename')">
+    <span data-i18n="ctx_rename">Rename</span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+  </div>
+  <div class="ctx-item" data-action="star" onclick="ctxAction('star')">
+    <span id="ctxStarLabel" data-i18n="ctx_star">Star</span>
+    <svg id="ctxStarIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26"/></svg>
+  </div>
+  <div class="ctx-item danger" data-action="delete" onclick="ctxAction('delete')">
+    <span data-i18n="ctx_delete">Delete</span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+  </div>
+</div>
+
+<!-- Delete Confirmation -->
+<div class="del-overlay" id="delOverlay">
+  <div class="del-dialog">
+    <h3 data-i18n="del_chat_title">删除对话</h3>
+    <p id="delMsg" data-i18n="del_chat_msg">确定要删除这个对话吗？此操作无法撤销。</p>
+    <div class="del-btns">
+      <button class="del-btn cancel" onclick="cancelDelete()" data-i18n="btn_cancel">取消</button>
+      <button class="del-btn confirm" onclick="confirmDelete()" data-i18n="btn_confirm">删除</button>
+    </div>
+  </div>
+</div>
+
+<div class="del-overlay" id="modelEditOverlay" style="z-index: 1100;">
+  <div class="del-dialog" style="max-width: 340px; width: 90%;">
+    <h3 style="margin-bottom: 16px;" data-i18n="edit_model_title">编辑模型设定</h3>
+    <div class="set-input-group" style="margin: 0 0 12px 0;">
+      <label style="font-size: 12px;" data-i18n="edit_model_name">模型名称</label>
+      <input type="text" id="editModelName" style="width:100%; padding:10px; border:1px solid var(--border); border-radius:8px; background:var(--bg-input); color:var(--text-primary); outline:none;">
+    </div>
+    <div class="set-input-group" style="margin: 0 0 12px 0;">
+      <label style="font-size: 12px;" data-i18n="edit_model_desc">模型描述 (可选)</label>
+      <input type="text" id="editModelDesc" data-i18n-placeholder="edit_model_desc_ph" placeholder="例如：通用对话、编程专用..." style="width:100%; padding:10px; border:1px solid var(--border); border-radius:8px; background:var(--bg-input); color:var(--text-primary); outline:none;">
+    </div>
+    <div class="set-input-group" style="margin: 0 0 20px 0;">
+      <label style="font-size: 12px;" data-i18n="edit_model_sys">系统提示词</label>
+      <textarea id="editModelSysPrompt" rows="4" style="width:100%; padding:10px; border:1px solid var(--border); border-radius:8px; background:var(--bg-input); color:var(--text-primary); outline:none; resize:none; font-family:inherit;"></textarea>
+    </div>
+    
+    <div style="margin: 0 0 20px 0; padding: 12px; background: rgba(120,120,120,0.1); border-radius: 8px; font-size: 11px; color: var(--text-muted); line-height: 1.5; word-break: break-all; text-align: left;">
+      <div style="margin-bottom: 6px;"><strong style="color:var(--text-secondary);" data-i18n="edit_orig_file">原文件名:</strong> <span id="editModelFileName"></span></div>
+      <div><strong style="color:var(--text-secondary);" data-i18n="edit_file_size">文件大小:</strong> <span id="editModelSize"></span></div>
+    </div>
+    
+    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 24px;">
+  <strong style="color:var(--text-secondary); font-size: 12px;" data-i18n="edit_arch">模型架构:</strong> 
+  
+  <span id="editModelArch" style="background:var(--accent); color:#fff; padding: 0 8px; border-radius: 6px; font-size: 11px; font-weight: 500; display: inline-flex; align-items: center; justify-content: center; height: 22px;">未知</span>
+  
+  <span id="editModelStorage" style="padding: 0 8px; border-radius: 6px; font-size: 11px; font-weight: 500; display: inline-flex; align-items: center; justify-content: center; height: 22px;"></span>
+</div>
+    
+    <div class="del-btns">
+      <button class="del-btn cancel" onclick="closeModelEdit()" data-i18n="btn_cancel">取消</button>
+      <button class="del-btn confirm" style="background:var(--accent);" onclick="saveModelEdit()" data-i18n="btn_save">保存</button>
+    </div>
+  </div>
+</div>
+
+<div class="del-overlay" id="userProfileOverlay" style="z-index: 1200;">
+  <div class="del-dialog" style="max-width: 340px; width: 90%;">
+    <h3 style="margin-bottom: 16px;" data-i18n="profile_title">个人档案 (User Profile)</h3>
+    <div class="set-input-group" style="margin: 0 0 12px 0;">
+      <label style="font-size: 12px;" data-i18n="profile_name">你的称呼</label>
+      <input type="text" id="editUserNameInput" style="width:100%; padding:10px; border:1px solid var(--border); border-radius:8px; background:var(--bg-input); color:var(--text-primary); outline:none;">
+    </div>
+    
+    <div class="set-input-group" style="margin: 0 0 20px 0;">
+      <label style="font-size: 12px;" data-i18n="profile_bio">关于我</label>
+      <textarea id="editUserBioInput" rows="4" data-i18n-placeholder="profile_bio_ph" placeholder="例如：我是一个喜剧演员。请用幽默的语气回答我的问题..." style="width:100%; padding:10px; border:1px solid var(--border); border-radius:8px; background:var(--bg-input); color:var(--text-primary); outline:none; resize:none; font-family:inherit;"></textarea>
+    </div>
+    <div class="del-btns">
+      <button class="del-btn cancel" onclick="closeUserProfile()" data-i18n="btn_cancel">取消</button>
+      <button class="del-btn confirm" style="background:var(--accent);" onclick="saveUserProfile()" data-i18n="btn_save">保存</button>
+    </div>
+  </div>
+</div>
+
+<!--  关于 Clover 弹窗 -->
+<div class="del-overlay" id="aboutOverlay" style="z-index: 1300;">
+  <div class="del-dialog" style="max-width: 320px; width: 90%; text-align: center; padding: 32px 24px 24px;">
+    
+    <div style="display:flex; justify-content:center; margin-bottom: 16px;">
+      <svg viewBox="0 0 68 68" width="60" height="60">
+        <g transform="translate(34,34)" fill="var(--accent)">
+          <path d="M 0 0 C -8 -8, -18 -12, -18 -22 C -18 -30, -8 -30, 0 -22 C 8 -30, 18 -30, 18 -22 C 18 -12, 8 -8, 0 0 Z" transform="translate(0, -2)"/>
+          <path d="M 0 0 C -8 -8, -18 -12, -18 -22 C -18 -30, -8 -30, 0 -22 C 8 -30, 18 -30, 18 -22 C 18 -12, 8 -8, 0 0 Z" transform="rotate(120) translate(0, -2)"/>
+          <path d="M 0 0 C -8 -8, -18 -12, -18 -22 C -18 -30, -8 -30, 0 -22 C 8 -30, 18 -30, 18 -22 C 18 -12, 8 -8, 0 0 Z" transform="rotate(240) translate(0, -2)"/>
+        </g>
+      </svg>
+    </div>
+    
+    <h2 style="font-family:'Source Serif 4', 'Noto Sans SC', serif; font-weight: 400; font-size: 24px; margin-bottom: 4px; color: var(--text-primary);">Clover</h2>
+    <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 24px;">Version 1.0.0</p>
+    
+    <div style="text-align: left; background: var(--bg-page); padding: 16px; border-radius: 12px; margin-bottom: 24px; font-size: 13px; line-height: 1.6; border: 1px solid var(--border);">
+      <div style="margin-bottom: 14px;">
+        <strong style="color: var(--text-primary); font-size: 14px; display: flex; align-items: center; gap: 6px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <span data-i18n="about_author">作者 (Author)</span>
+        </strong>
+        <div style="color: var(--text-secondary); margin-top: 4px;" data-i18n="about_author_desc">CloverUI是由 Spike8086开发一款纯本地大模型APP。</div>
+        <a href="https://github.com/Spike8086" target="_blank" style="display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; padding: 6px 12px; background: var(--bg-hover); color: var(--text-primary); text-decoration: none; border-radius: 8px; font-weight: 500; font-size: 13px; transition: background 0.2s;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
+          </svg>
+          GitHub: Spike8086
+        </a>
+      </div>
+      <div>
+        <strong style="color: var(--text-primary); font-size: 14px; display: flex; align-items: center; gap: 6px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <span data-i18n="about_disclaimer">免责声明 (Disclaimer)</span>
+        </strong>
+        <div style="color: var(--text-secondary); margin-top: 4px;" data-i18n="about_disclaimer_desc">本应用仅提供本地计算框架，应用断网运行，绝不上传任何隐私数据。AI 生成内容不代表开发者立场，请用户自行负责。</div>
+      </div>
+    </div>
+
+    <button class="del-btn cancel" style="width: 100%; font-size: 15px; padding: 12px; border-radius: 12px; background: var(--bg-hover); color: var(--text-primary);" onclick="closeAbout()" data-i18n="btn_close">关闭</button>
+  </div>
+</div>
+  </div>
+</div>
+</div>
+</div>
+
+<!-- Header 3-dot Menu -->
+<div class="hdr-menu" id="hdrMenu">
+  <div class="hdr-menu-title" id="hdrMenuTitle" data-i18n="current_chat">当前对话</div>
+  <div class="ctx-item" onclick="hdrAction('rename')">
+    <span data-i18n="ctx_rename">Rename</span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+  </div>
+  <div class="ctx-item" onclick="hdrAction('star')">
+    <span id="hdrStarLabel">Star</span>
+    <svg id="hdrStarIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26"/></svg>
+  </div>
+  <div class="hdr-menu-divider"></div>
+  <div class="ctx-item danger" onclick="hdrAction('delete')">
+    <span data-i18n="ctx_delete">Delete</span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+  </div>
+  <div class="hdr-menu-divider"></div>
+  <div class="ctx-item" onclick="hdrAction('newchat')">
+    <span data-i18n="new_chat_btn">New chat</span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+  </div>
+</div>
+
+<!-- Model Selector Bottom Sheet -->
+<div class="sheet-overlay" id="sheetOv" onclick="closeModelSheet()"></div>
+<div class="sheet" id="modelSheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-hdr">
+    <button class="sheet-close" onclick="closeModelSheet()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+    <div class="sheet-title" data-i18n="select_model_title">Select model</div>
+    <div style="width:32px"></div>
+  </div>
+  <div id="modelOptions"></div>
+  <div class="sheet-divider"></div>
+  <div class="toggle-row">
+    <div class="toggle-info">
+      <div class="toggle-label" data-i18n="thinking_mode">Thinking Mode</div>
+      <div class="toggle-desc" data-i18n="think_longer">Think longer for complex tasks</div>
+    </div>
+    <button class="toggle-switch on" id="extToggle" onclick="toggleExtended()"></button>
+  </div>
+</div>
+
+<!-- Settings Sheet -->
+<div class="msg-sheet-ov" id="setSheetOv" onclick="closeSettings()"></div>
+<!-- Settings Sheet (完整替换版) -->
+<div class="settings-sheet" id="settingsSheet">
+  <!-- 1. 固定头部 -->
+  <div class="sheet-handle"></div>
+  <div class="sheet-hdr">
+    <button class="sheet-close" onclick="closeSettings()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+    <div class="sheet-title" data-i18n="settings_title">设置</div>
+    <div style="width:32px"></div>
+  </div>
+
+  <!-- 2. 可滚动的内容区域 -->
+  <div class="sheet-scroll-content">
+    
+   <!-- === 账户 === -->
+    <div class="set-section">
+      <div class="set-label" data-i18n="set_account">账户</div>
+      <div class="set-item" onclick="closeSettings(); openUserProfile();">
+        <div class="set-item-left">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <span class="set-item-label" data-i18n="set_username">用户名</span>
+        </div>
+        <span class="set-item-val" id="setUsername">User</span>
+      </div>
+      
+      <!-- 关于 Clover 按钮 -->
+      <div class="set-item" onclick="openAbout();">
+        <div class="set-item-left">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+          <span class="set-item-label" data-i18n="set_about">关于 CloverUI</span>
+        </div>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+
+      <!--  新增：语言切换按钮 -->
+      <div class="set-item" onclick="toggleLanguage();">
+        <div class="set-item-left">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          <span class="set-item-label" data-i18n="set_language">语言 / Language</span>
+        </div>
+        <span class="set-item-val" id="langDisplay">简体中文</span>
+      </div>
+      
+    </div>
+    <div class="sheet-divider"></div>
+  
+    <!-- === 外观 === -->
+<div class="set-section">
+  <div class="set-label" data-i18n="set_appearance">外观</div>
+  <div class="toggle-row" style="padding:14px 24px">
+    <div class="toggle-info">
+      <div class="toggle-label" data-i18n="set_dark_mode">深色模式</div>
+      <div class="toggle-desc" data-i18n="set_dark_mode_desc">切换亮色/暗色主题</div>
+    </div>
+    <button class="toggle-switch on" id="darkToggle" onclick="toggleDarkSetting()"></button>
+  </div>
+
+  <div class="set-item" style="padding: 14px 24px; cursor: default;">
+    <div class="set-item-left">
+      <div class="toggle-info">
+        <div class="toggle-label" data-i18n="set_theme_color">主题颜色</div>
+        <div class="toggle-desc" data-i18n="set_theme_color_desc">自定义全局按钮与图标颜色</div>
+      </div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <button data-i18n="set_reset_default" onclick="resetAccentColor()" style="background:none; border:none; color:var(--text-secondary); font-size:12px; cursor:pointer; text-decoration:underline;">恢复默认</button>
+      
+      <input type="color" id="cfgAccentColor" class="color-picker-input" oninput="updateAccentColor(this.value)" onchange="saveAccentColor()">
+    </div>
+  </div>
+</div>
+<div class="sheet-divider"></div>
+
+<div class="set-section">
+  <div class="set-label" data-i18n="set_advanced">高级 (ADVANCED)</div>
+  <div class="toggle-row" style="padding:14px 24px">
+    <div class="toggle-info">
+      <div class="toggle-label" data-i18n="set_show_speed">显示生成速度</div>
+      <div class="toggle-desc" data-i18n="set_show_speed_desc">显示 Prompt 解码与文本生成速度 (t/s)</div>
+    </div>
+    <button class="toggle-switch" id="speedToggle" onclick="toggleSpeedSetting()"></button>
+  </div>
+</div>
+<div class="sheet-divider"></div>
+
+<!-- === 模型选择 (集成在这里！) === -->
+<div class="set-section">
+  <div class="set-label" data-i18n="set_select_model">模型选择 (SELECT MODEL)</div>
+  
+  <!-- 这里是模型列表容器 -->
+  <div id="settingsModelList" class="model-list-box">
+    <!-- JS 会自动填充这里的模型 -->
+  </div>
+
+  <!-- 这里是导入按钮 -->
+  <div class="set-item" onclick="importNewModel();">
+  <div class="set-item-left" style="color:var(--accent);">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    <span style="font-weight:500;" data-i18n="set_import_model">导入新的 GGUF 模型</span>
+  </div>
+</div>
+</div>
+<div class="sheet-divider"></div>
+
+<!-- === 模型参数配置 === -->
+<div class="set-section">
+  <div class="set-label" onclick="toggleParams()" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center; padding-right:24px;">
+    <span data-i18n="set_parameters">参数配置 (PARAMETERS)</span>
+    <svg id="paramsIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s; color: var(--text-muted);"><polyline points="6 9 12 15 18 9"/></svg>
+  </div>
+
+  <div id="paramsContent" style="display: none;">
+    <div class="set-input-group">
+      <label data-i18n="set_ctx_length">上下文长度 (Context Length)</label>
+      <input type="number" id="cfgContextSize" data-i18n-placeholder="ph_default_2048" placeholder="默认 2048" value="2048" onblur="saveModelConfig()">
+      <div class="set-desc" data-i18n="set_ctx_desc">决定 AI 能记多少对话（最大32769）。</div>
+    </div>
+    
+    <div class="set-input-group">
+      <label data-i18n="set_max_tokens">最大生成长度 (Max Tokens)</label>
+      <input type="number" id="cfgMaxTokens" data-i18n-placeholder="ph_default_512" placeholder="默认 512" value="512" onblur="saveModelConfig()">
+      <div class="set-desc" data-i18n="set_max_desc">单次回答的生成长度（不能超过上下文）。</div>
+    </div>
+    
+    <div class="set-input-group">
+      <label data-i18n="set_threads">线程数 (Threads)</label>
+      <input type="number" id="cfgThreads" data-i18n-placeholder="ph_default_4" placeholder="默认 4" value="4" onblur="saveModelConfig()">
+      <div class="set-desc" data-i18n="set_threads_desc">模型推理时的核心使用数量。</div>
+    </div>
+    
+    <div style="height:30px"></div>
+  </div>
+</div>
+
+  </div> <!-- end of sheet-scroll-content -->
+</div>
+
+<!-- Model Selector Bottom Sheet (选择模型面板 - 必须放在外面！) -->
+<div class="sheet-overlay" id="sheetOv" onclick="closeModelSheet()"></div>
+<div class="sheet" id="modelSheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-hdr">
+    <button class="sheet-close" onclick="closeModelSheet()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    <div class="sheet-title" data-i18n="select_model_title">Select model</div><div style="width:32px"></div>
+  </div>
+  <div id="modelOptions"></div>
+  <div class="sheet-divider"></div>
+  <div class="set-item" onclick="importNewModel();">
+    <div class="set-item-left" style="color:var(--accent);">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      <span style="font-weight:500;">导入新的 GGUF 模型</span>
+    </div>
+  </div>
+</div>
+
+<!-- Message Action Sheet -->
+<div class="msg-sheet-ov" id="msgSheetOv" onclick="closeMsgSheet()"></div>
+<!-- ... 后面的代码保持不变 ... -->
+
+<!-- Message Action Sheet -->
+<div class="msg-sheet-ov" id="msgSheetOv" onclick="closeMsgSheet()"></div>
+<div class="msg-sheet" id="msgSheet">
+  <div class="msg-sheet-handle"></div>
+  <div class="msg-sheet-item" onclick="msgSheetAction('copy')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+    <span data-i18n="msg_copy">Copy Message</span>
+  </div>
+  <div class="msg-sheet-item" onclick="msgSheetAction('edit')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+    <span data-i18n="msg_edit">Edit</span>
+  </div>
+</div>
+
+<div class="del-overlay" id="uiDialogOverlay" style="z-index: 3000;">
+  <div class="del-dialog" style="max-width: 320px; width: 90%; text-align: center; padding: 28px 24px;">
+    <h3 id="uiDialogTitle" style="margin-bottom: 12px; font-size: 18px;">提示</h3>
+    <p id="uiDialogMsg" style="font-size: 14.5px; color: var(--text-secondary); margin-bottom: 20px; line-height: 1.5;"></p>
+    <input type="text" id="uiDialogInput" class="ui-dialog-input" style="display:none;" autocomplete="off">
+    <div class="del-btns" style="justify-content: center; gap: 12px;">
+      <button class="del-btn cancel" id="uiDialogCancel" style="display:none; flex: 1;">取消</button>
+      <button class="del-btn confirm" id="uiDialogConfirm" style="background:var(--accent); flex: 1;">确定</button>
+    </div>
+  </div>
+</div>
+
+<div class="del-overlay" id="importModeOverlay" style="z-index: 3200;">
+  <div class="del-dialog" style="max-width: 340px; width: 90%; padding: 24px;">
+    <h3 style="margin-bottom: 20px; font-size: 18px; text-align: center;" data-i18n="import_mode_title">选择导入方式</h3>
+
+    <div class="import-opt-btn" onclick="resolveImport('link')">
+      <div class="opt-title" style="color: var(--accent);">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+        <span data-i18n="import_ext_title">外部直读 (推荐)</span>
+      </div>
+      <div class="opt-desc" data-i18n="import_ext_desc">连接外部文件，不占用额外空间，但要保证路径。</div>
+    </div>
+
+    <div class="import-opt-btn" onclick="resolveImport('copy')">
+      <div class="opt-title" style="color: var(--text-primary);">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        <span data-i18n="import_int_title">内部复制</span>
+      </div>
+      <div class="opt-desc" data-i18n="import_int_desc">拷贝文件进入app，占有额外空间，但更稳定。</div>
+    </div>
+
+    <button class="del-btn cancel" style="width: 100%; margin-top: 8px; padding: 12px; font-size: 15px; border-radius: 12px;" onclick="resolveImport(null)" data-i18n="btn_cancel">取消</button>
+  </div>
+</div>
+
+<div class="del-overlay" id="uiLoadingOverlay" style="z-index: 3100;">
+  <div style="display:flex; flex-direction:column; align-items:center; background:var(--bg-input); padding:30px 40px; border-radius:20px; box-shadow:0 10px 40px rgba(0,0,0,0.25);">
+    <svg viewBox="0 0 68 68" width="44" height="44" style="animation: spin 1.5s linear infinite;">
+      <g transform="translate(34,34)" fill="var(--accent)">
+        <path d="M 0 0 C -8 -8, -18 -12, -18 -22 C -18 -30, -8 -30, 0 -22 C 8 -30, 18 -30, 18 -22 C 18 -12, 8 -8, 0 0 Z" transform="translate(0, -2)"/>
+        <path d="M 0 0 C -8 -8, -18 -12, -18 -22 C -18 -30, -8 -30, 0 -22 C 8 -30, 18 -30, 18 -22 C 18 -12, 8 -8, 0 0 Z" transform="rotate(120) translate(0, -2)"/>
+        <path d="M 0 0 C -8 -8, -18 -12, -18 -22 C -18 -30, -8 -30, 0 -22 C 8 -30, 18 -30, 18 -22 C 18 -12, 8 -8, 0 0 Z" transform="rotate(240) translate(0, -2)"/>
+      </g>
+    </svg>
+    <div id="uiLoadingText" style="margin-top:20px; font-size:15px; font-weight:600; color:var(--text-primary); letter-spacing: 0.5px;">正在唤醒模型...</div>
+    <div style="width: 180px; height: 4px; background: var(--border); border-radius: 2px; margin-top: 16px; overflow: hidden; position: relative;">
+       <div style="position: absolute; left: 0; top: 0; height: 100%; width: 50%; background: var(--accent); border-radius: 2px; animation: progressIndeterminate 1.2s ease-in-out infinite alternate;"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Config ──
+// ════════ 多语言 (i18n) 引擎 ════════
+const i18n = {
+    zh: {
+        set_account: "账户",
+        set_username: "用户名",
+        set_about: "关于 CloverUI",
+        set_language: "语言 / Language",
+        lang_name: "简体中文",
+        new_chat: "新对话",
+        chat_history: "对话记录",
+        input_placeholder: "和 Clover 聊聊…",
+        welcome_msg: "有什么可以帮你的吗？",
+        ui_loading: "正在加载...",
+        ui_waking: "正在唤醒模型...",
+        model_select: "导入新的 GGUF 模型",
+        thinking_process: "Thinking Process",
+        thinking: "Thinking...",
+        
+        // --- 外观与参数配置 ---
+        set_appearance: "外观",
+        set_dark_mode: "深色模式",
+        set_dark_mode_desc: "切换亮色/暗色主题",
+        set_theme_color: "主题颜色",
+        set_theme_color_desc: "自定义全局按钮与图标颜色",
+        set_reset_default: "恢复默认",
+        set_advanced: "高级 (ADVANCED)",
+        set_show_speed: "显示生成速度",
+        set_show_speed_desc: "显示 Prompt 解码与文本生成速度 (t/s)",
+        set_select_model: "模型选择 (SELECT MODEL)",
+        set_import_model: "导入新的 GGUF 模型",
+        set_parameters: "参数配置 (PARAMETERS)",
+        set_ctx_length: "上下文长度 (Context Length)",
+        set_ctx_desc: "决定 AI 能记多少对话（最大32769）。",
+        set_max_tokens: "最大生成长度 (Max Tokens)",
+        set_max_desc: "单次回答的生成长度。",
+        set_threads: "线程数 (Threads)",
+        set_threads_desc: "控制 CPU 推理时的核心使用数。",
+        ph_default_2048: "默认 2048",
+        ph_default_512: "默认 512",
+        ph_default_4: "默认 4",
+        empty_model_list: "暂无模型，请在设置界面进行导入",
+        
+        // --- 查漏补缺 ---
+        settings_title: "设置",
+        chats_title: "对话记录",
+        search_chats: "搜索对话",
+        no_matching_chats: "没有找到匹配的对话",
+        new_chat_btn: "新对话",
+        current_chat: "当前对话",
+        ctx_rename: "重命名",
+        ctx_delete: "删除",
+        del_chat_title: "删除对话",
+        del_chat_msg: "确定要删除这个对话吗？此操作无法撤销。",
+        btn_cancel: "取消",
+        btn_confirm: "确定",
+        select_model_title: "选择模型",
+        thinking_mode: "Thinking Mode",
+        think_longer: "Think longer for complex tasks",
+        msg_copy: "复制内容",
+        msg_edit: "编辑重新发送",
+        editing_msg: "正在编辑消息",
+        editing_banner: "编辑此消息将从此处重新开始对话。",
+        
+        // --- 组件 1-4 ---
+        sb_recents: "最近对话",
+        tooltip_profile: "点击修改个人档案",
+        tooltip_theme: "切换亮/暗模式",
+        tooltip_settings: "设置",
+        profile_title: "个人档案",
+        profile_name: "你的称呼",
+        profile_bio: "关于我",
+        profile_bio_ph: "例如：我是一个喜剧演员。请用幽默的语气回答我的问题...",
+        btn_save: "保存",
+        edit_model_title: "编辑模型设定",
+        edit_model_name: "模型名称",
+        edit_model_desc: "模型描述 (可选)",
+        edit_model_desc_ph: "例如：通用对话、编程专用...",
+        edit_model_sys: "系统提示词",
+        import_mode_title: "选择导入方式",
+        import_ext_title: "外部直读 (推荐)",
+        import_ext_desc: "连接外部文件，速度快，不占用额外空间，但要保证路径。",
+        import_int_title: "内部复制",
+        import_int_desc: "拷贝文件进入App，速度慢，占有额外空间，但更稳定。",
+        
+        // --- 组件 5-7 ---
+        about_author: "作者 (Author)",
+        about_author_desc: "CloverUI是由 Spike8086开发一款纯本地大模型APP。",
+        about_disclaimer: "免责声明 (Disclaimer)",
+        about_disclaimer_desc: "本应用仅提供本地计算框架，应用断网运行，绝不上传任何隐私数据。AI 生成内容不代表开发者立场，请用户自行负责。",
+        btn_close: "关闭",
+        chat_disclaimer: "Clover 可能会犯错。请核实重要信息。",
+        ctx_star: "收藏",
+        ctx_unstar: "取消收藏",
+        act_copy: "复制文本",
+        act_regen: "重新生成",
+        
+        // --- 交互词汇与弹窗 ---
+        tooltip_send: "发送",
+        tooltip_stop: "停止生成",
+        tooltip_update: "更新消息",
+        dialog_default_title: "提示",
+        dialog_confirm_title: "请确认",
+        dialog_btn_ok: "确定",
+        dialog_btn_cancel: "取消",
+        prompt_rename_chat: "重命名对话",
+        
+        // ====== 请加入到 zh 字典的末尾 ======
+        tooltip_more: "更多",
+        tooltip_attach: "附件",
+        tooltip_voice: "语音",
+        tooltip_filter: "筛选",
+        edit_orig_file: "原文件名:",
+        edit_file_size: "文件大小:",
+        edit_arch: "模型架构:",
+        edit_unknown: "未知 (重新导入后显示)",
+        edit_unnamed: "未命名模型",
+        time_just_now: "刚刚",
+        time_mins_ago: "分钟前",
+        time_hrs_ago: "小时前",
+        time_days_ago: "天前",
+        file_parsing: "正在解析 ",
+        file_err_format: "仅支持 .txt 和 .docx 格式的文件",
+        file_err_empty: "这是一个空文件",
+        file_err_read: "读取文件失败：",
+        file_limit_exceeded: "文件太大，超出上下文限制",
+        file_attached: "已附加文件",
+        file_token_err_title: "文件过大",
+        file_token_err_msg: "该文件大约需要 {0} Tokens，但当前设置的可用上下文仅剩 {1} Tokens。\n\n请前往设置增大 Context Length 或选择更小的文件。",
+        model_top_select: "请选择模型",
+        model_perm_req: "为了连接外部文件，需要访问权限。\n\n请在弹出的设置中打开开关，然后返回重试。",
+        model_perm_title: "需要权限",
+        model_copy_warn: "即将开始复制文件到 App 内部，请耐心等待，不要退出应用！",
+        model_copy_title: "准备复制",
+        model_prompt_name: "给新模型起个名字",
+        model_import_cancel: "操作已取消或发生错误：",
+        model_loading: "正在装载 ",
+        model_load_err: "模型加载失败：\n",
+        model_load_err_title: "加载失败",
+        model_del_confirm: "确定要彻底移除这个模型吗?",
+        model_del_title: "删除模型",
+        model_waking: "正在唤醒 ",
+        model_wake_fail: "加载失败 (请重新选择)",
+        
+        regen_confirm_msg: "重新生成将删除此条消息之后的所有对话记录，确定要继续吗？",
+        regen_confirm_title: "重新生成",
+        drag_sort: "长按拖拽排序",
+        ph_model_name: "模型名称",
+        sys_understood: "我明白了。"
+    },
+    en: {
+        set_account: "Account",
+        set_username: "Username",
+        set_about: "About CloverUI",
+        set_language: "Language / 语言",
+        lang_name: "English",
+        new_chat: "New Chat",
+        chat_history: "Chat History",
+        input_placeholder: "Message Clover...",
+        welcome_msg: "How can I help you today?",
+        ui_loading: "Loading...",
+        ui_waking: "Waking up model...",
+        model_select: "Import New GGUF Model",
+        thinking_process: "Thinking Process",
+        thinking: "Thinking...",
+        
+        // --- 外观与参数配置 ---
+        set_appearance: "Appearance",
+        set_dark_mode: "Dark Mode",
+        set_dark_mode_desc: "Toggle light/dark theme",
+        set_theme_color: "Theme Color",
+        set_theme_color_desc: "Customize global button and icon colors",
+        set_reset_default: "Reset",
+        set_advanced: "Advanced",
+        set_show_speed: "Show Generation Speed",
+        set_show_speed_desc: "Display Prompt decoding & text generation speed (t/s)",
+        set_select_model: "Select Model",
+        set_import_model: "Import New GGUF Model",
+        set_parameters: "Parameters",
+        set_ctx_length: "Context Length",
+        set_ctx_desc: "Determines how much conversation AI remembers (Max 32769).",
+        set_max_tokens: "Max Tokens",
+        set_max_desc: "Max length for a single response.",
+        set_threads: "Threads",
+        set_threads_desc: "CPU cores used during inference.",
+        ph_default_2048: "Default 2048",
+        ph_default_512: "Default 512",
+        ph_default_4: "Default 4",
+        empty_model_list: "No models found. Please import in settings.",
+        
+        // --- 查漏补缺 ---
+        settings_title: "Settings",
+        chats_title: "Chats",
+        search_chats: "Search Chats",
+        no_matching_chats: "No matching chats found",
+        new_chat_btn: "New chat",
+        current_chat: "Current Chat",
+        ctx_rename: "Rename",
+        ctx_delete: "Delete",
+        del_chat_title: "Delete Chat",
+        del_chat_msg: "Are you sure you want to delete this chat? This cannot be undone.",
+        btn_cancel: "Cancel",
+        btn_confirm: "Delete",
+        select_model_title: "Select model",
+        thinking_mode: "Thinking Mode",
+        think_longer: "Think longer for complex tasks",
+        msg_copy: "Copy Message",
+        msg_edit: "Edit",
+        editing_msg: "Editing message",
+        editing_banner: "Editing this message will restart the conversation from this point.",
+        
+        // --- 组件 1-4 ---
+        sb_recents: "Recents",
+        tooltip_profile: "Edit User Profile",
+        tooltip_theme: "Toggle Light/Dark Mode",
+        tooltip_settings: "Settings",
+        profile_title: "User Profile",
+        profile_name: "Your Name",
+        profile_bio: "About Me",
+        profile_bio_ph: "e.g., I am a comedian. Please reply with humor...",
+        btn_save: "Save",
+        edit_model_title: "Edit Model Settings",
+        edit_model_name: "Model Name",
+        edit_model_desc: "Model Description (Optional)",
+        edit_model_desc_ph: "e.g., General chat, Coding...",
+        edit_model_sys: "System Prompt",
+        import_mode_title: "Select Import Mode",
+        import_ext_title: "External Link (Recommended)",
+        import_ext_desc: "Link to external file. Fast speed. Saves space, but keep the path intact.",
+        import_int_title: "Internal Copy",
+        import_int_desc: "Copy file into app. Slow speed. Uses extra space, but more stable.",
+        
+        // --- 组件 5-7 ---
+        about_author: "Author",
+        about_author_desc: "CloverUI is a pure local LLM app developed by Spike8086.",
+        about_disclaimer: "Disclaimer",
+        about_disclaimer_desc: "This app runs entirely offline and never uploads private data. AI-generated content does not represent the developer's views. Use at your own risk.",
+        btn_close: "Close",
+        chat_disclaimer: "Clover can make mistakes. Please double check responses.",
+        ctx_star: "Star",
+        ctx_unstar: "Unstar",
+        act_copy: "Copy Text",
+        act_regen: "Regenerate",
+        
+        // --- 交互词汇与弹窗 ---
+        tooltip_send: "Send",
+        tooltip_stop: "Stop Generation",
+        tooltip_update: "Update Message",
+        dialog_default_title: "Notice",
+        dialog_confirm_title: "Confirm",
+        dialog_btn_ok: "OK",
+        dialog_btn_cancel: "Cancel",
+        prompt_rename_chat: "Rename Chat",
+        
+        // ====== 请加入到 en 字典的末尾 ======
+        tooltip_more: "More",
+        tooltip_attach: "Attach",
+        tooltip_voice: "Voice",
+        tooltip_filter: "Filter",
+        edit_orig_file: "Original File:",
+        edit_file_size: "File Size:",
+        edit_arch: "Architecture:",
+        edit_unknown: "Unknown (Re-import to show)",
+        edit_unnamed: "Unnamed Model",
+        time_just_now: "Just now",
+        time_mins_ago: " mins ago",
+        time_hrs_ago: " hrs ago",
+        time_days_ago: " days ago",
+        file_parsing: "Parsing ",
+        file_err_format: "Only .txt and .docx files are supported",
+        file_err_empty: "This file is empty",
+        file_err_read: "Failed to read file: ",
+        file_limit_exceeded: "File too large, exceeds context limit",
+        file_attached: "File attached",
+        file_token_err_title: "File Too Large",
+        file_token_err_msg: "This file requires approx {0} Tokens, but remaining context is {1} Tokens.\n\nPlease increase Context Length in settings or select a smaller file.",
+        model_top_select: "Select Model",
+        model_perm_req: "Storage permission is required to link external files.\n\nPlease grant it in settings and try again.",
+        model_perm_title: "Permission Required",
+        model_copy_warn: "Copying file into app. Please wait and do not close the app!",
+        model_copy_title: "Preparing Copy",
+        model_prompt_name: "Name your new model",
+        model_import_cancel: "Operation cancelled or error: ",
+        model_loading: "Loading ",
+        model_load_err: "Model load failed:\n",
+        model_load_err_title: "Load Failed",
+        model_del_confirm: "Are you sure you want to completely remove this model?",
+        model_del_title: "Delete Model",
+        model_waking: "Waking up ",
+        model_wake_fail: "Load Failed (Please reselect)",
+        
+        regen_confirm_msg: "Regenerating will delete all subsequent messages. Continue?",
+        regen_confirm_title: "Regenerate",
+        drag_sort: "Long press to drag and sort",
+        ph_model_name: "Model Name",
+        sys_understood: "Understood."
+    }
+};
+
+// 获取本地保存的语言，默认中文
+let currentLang = localStorage.getItem('app_lang') || 'en';
+
+// 翻译助手函数
+function t(key) {
+    return i18n[currentLang][key] || key;
+}
+
+// 切换语言逻辑
+function toggleLanguage() {
+    currentLang = currentLang === 'zh' ? 'en' : 'zh';
+    localStorage.setItem('app_lang', currentLang);
+    applyTranslations();
+}
+
+// 遍历 DOM 替换文本
+function applyTranslations() {
+    // 替换普通文本
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        el.innerText = t(key);
+    });
+    // 替换输入框 Placeholder
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        const key = el.getAttribute('data-i18n-placeholder');
+        el.placeholder = t(key);
+    });
+    // 👇 新增：替换 Hover 提示文本 (Title)
+    document.querySelectorAll('[data-i18n-title]').forEach(el => {
+        const key = el.getAttribute('data-i18n-title');
+        el.title = t(key);
+    });
+    
+    // 更新语言按钮右侧的状态文字
+    const langDisplay = document.getElementById('langDisplay');
+    if (langDisplay) langDisplay.innerText = t('lang_name');
+    if (typeof renderModelList === 'function') {
+        renderModelList();
+    }
+}
+
+// 页面加载时自动应用语言
+document.addEventListener('DOMContentLoaded', applyTranslations);
+// ── UI Modal Controllers (Promise-based) ──
+function uiAlert(msg, title) {
+    if (!title) title = t('dialog_default_title'); // 动态默认值
+    return new Promise(resolve => {
+        const ov = document.getElementById('uiDialogOverlay');
+        document.getElementById('uiDialogTitle').innerText = title;
+        document.getElementById('uiDialogMsg').innerText = msg;
+        document.getElementById('uiDialogMsg').style.display = 'block';
+        document.getElementById('uiDialogInput').style.display = 'none';
+        document.getElementById('uiDialogCancel').style.display = 'none';
+        
+        const btnConfirm = document.getElementById('uiDialogConfirm');
+        btnConfirm.innerText = t('dialog_btn_ok');
+        btnConfirm.onclick = () => { ov.classList.remove('show'); resolve(); };
+        
+        ov.classList.add('show');
+    });
+}
+
+function uiConfirm(msg, title, trueText, falseText) {
+    if (!title) title = t('dialog_confirm_title'); // 动态默认值
+    if (!trueText) trueText = t('dialog_btn_ok');
+    if (!falseText) falseText = t('dialog_btn_cancel');
+    
+    return new Promise(resolve => {
+        const ov = document.getElementById('uiDialogOverlay');
+        document.getElementById('uiDialogTitle').innerText = title;
+        document.getElementById('uiDialogMsg').innerHTML = msg;
+        document.getElementById('uiDialogMsg').style.display = 'block';
+        document.getElementById('uiDialogInput').style.display = 'none';
+        
+        const btnCancel = document.getElementById('uiDialogCancel');
+        btnCancel.style.display = 'block';
+        btnCancel.innerText = falseText; 
+        btnCancel.onclick = () => { 
+            ov.classList.remove('show'); 
+            btnCancel.innerText = t('dialog_btn_cancel'); // 用完恢复多语言默认
+            resolve(false); 
+        };
+        
+        const btnConfirm = document.getElementById('uiDialogConfirm');
+        btnConfirm.innerText = trueText; 
+        btnConfirm.onclick = () => { 
+            ov.classList.remove('show'); 
+            btnConfirm.innerText = t('dialog_btn_ok'); // 用完恢复多语言默认
+            resolve(true); 
+        };
+        
+        ov.classList.add('show');
+    });
+}
+
+function uiPrompt(title, defaultVal="") {
+    if (!title) title = t('dialog_default_title'); // 动态默认值
+    return new Promise(resolve => {
+        const ov = document.getElementById('uiDialogOverlay');
+        document.getElementById('uiDialogTitle').innerText = title;
+        document.getElementById('uiDialogMsg').style.display = 'none'; 
+        
+        const input = document.getElementById('uiDialogInput');
+        input.style.display = 'block';
+        input.value = defaultVal;
+        
+        const btnCancel = document.getElementById('uiDialogCancel');
+        btnCancel.style.display = 'block';
+        btnCancel.innerText = t('dialog_btn_cancel');
+        btnCancel.onclick = () => { ov.classList.remove('show'); resolve(null); }; 
+        
+        const btnConfirm = document.getElementById('uiDialogConfirm');
+        btnConfirm.innerText = t('dialog_btn_ok');
+        btnConfirm.onclick = () => { ov.classList.remove('show'); resolve(input.value); };
+        
+        ov.classList.add('show');
+        setTimeout(() => { input.focus(); input.select(); }, 100);
+    });
+}
+
+function showLoading(text="正在加载...") {
+    document.getElementById('uiLoadingText').innerText = text;
+    document.getElementById('uiLoadingOverlay').classList.add('show');
+}
+function hideLoading() {
+    document.getElementById('uiLoadingOverlay').classList.remove('show');
+}
+// ── Global State ──
+// 读取保存的设置，如果没有则使用默认值
+let configContextSize = parseInt(localStorage.getItem('cfg_ctx')) || 4096;
+let configSystemPrompt = localStorage.getItem('cfg_sys') || "";
+// 注意：以后在手机上运行时，这里要改成 'http://127.0.0.1:8080'
+const API_BASE = 'http://localhost:11434'; 
+const API_CHAT_URL = `${API_BASE}/v1/chat/completions`;
+const API_MODELS_URL = `${API_BASE}/v1/models`;
+
+let API_MODEL = ''; 
+let extendedThinking = false;
+
+// ── SVG constants ──
+// 这个设计由三个心形叶片组成，完美中心对称，使用主题色填充
+const SPARK=`<svg viewBox="0 0 68 68" width="26" height="26"><g transform="translate(34,34)" fill="var(--accent)"><path d="M 0 0 C -8 -8, -18 -12, -18 -22 C -18 -30, -8 -30, 0 -22 C 8 -30, 18 -30, 18 -22 C 18 -12, 8 -8, 0 0 Z" transform="translate(0, -2)"/><path d="M 0 0 C -8 -8, -18 -12, -18 -22 C -18 -30, -8 -30, 0 -22 C 8 -30, 18 -30, 18 -22 C 18 -12, 8 -8, 0 0 Z" transform="rotate(120) translate(0, -2)"/><path d="M 0 0 C -8 -8, -18 -12, -18 -22 C -18 -30, -8 -30, 0 -22 C 8 -30, 18 -30, 18 -22 C 18 -12, 8 -8, 0 0 Z" transform="rotate(240) translate(0, -2)"/></g></svg>`;
+
+const I={
+  copy:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`,
+  share:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>`,
+  play:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>`,
+  up:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>`,
+  down:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/></svg>`,
+  regen:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>`,
+  check:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>`,
+};
+
+// ── Theme Accent Color Logic ──
+// 定义默认的 Clover 绿色
+const DEFAULT_ACCENT_COLOR = '#2D722C';
+
+// 1. 尝试从本地读取，如果没有则使用新的默认绿
+let currentAccentColor = localStorage.getItem('cfg_accent_color') || DEFAULT_ACCENT_COLOR;
+
+// 2. 页面加载时，立刻把变量注入到根元素的 CSS 变量中
+document.documentElement.style.setProperty('--accent', currentAccentColor);
+
+// 3. 用户拖动调色盘时，实时更新界面颜色
+function updateAccentColor(color) {
+    currentAccentColor = color;
+    document.documentElement.style.setProperty('--accent', color);
+}
+
+// 4. 用户松手关闭调色盘时，保存到本地
+function saveAccentColor() {
+    localStorage.setItem('cfg_accent_color', currentAccentColor);
+}
+
+// 5. 新增：恢复默认颜色
+function resetAccentColor() {
+    updateAccentColor(DEFAULT_ACCENT_COLOR);
+    saveAccentColor();
+    // 同步更新 UI 上的调色盘颜色显示
+    const picker = document.getElementById('cfgAccentColor');
+    if(picker) picker.value = DEFAULT_ACCENT_COLOR;
+}
+// ══ Chat data store ══
+let chatStore = JSON.parse(localStorage.getItem('Clover_chats')) || [];
+if (!Array.isArray(chatStore)) chatStore = []; // 终极防空保护，确保它绝对是个数组
+
+// ── State ──
+let started=false,typing=false,conversation=[],currentChatId=null;
+// 在 state 变量区（let currentUsername = ... 附近）
+let currentUserBio = localStorage.getItem('user_bio') || '';
+// 如果之前没存过名字，尝试读取，默认叫 User
+currentUsername = localStorage.getItem('user_name') || 'User';
+
+function openUserProfile() {
+    document.getElementById('editUserNameInput').value = currentUsername;
+    document.getElementById('editUserBioInput').value = currentUserBio;
+    document.getElementById('userProfileOverlay').classList.add('show');
+}
+
+function closeUserProfile() {
+    document.getElementById('userProfileOverlay').classList.remove('show');
+}
+
+// ════════ 关于 Clover 弹窗控制器 ════════
+function openAbout() {
+    document.getElementById('aboutOverlay').classList.add('show');
+}
+function closeAbout() {
+    document.getElementById('aboutOverlay').classList.remove('show');
+}
+
+function saveUserProfile() {
+    currentUsername = document.getElementById('editUserNameInput').value.trim() || 'User';
+    currentUserBio = document.getElementById('editUserBioInput').value.trim();
+    
+    localStorage.setItem('user_name', currentUsername);
+    localStorage.setItem('user_bio', currentUserBio);
+    
+    // 刷新 UI
+    document.getElementById('userName').textContent = currentUsername;
+    document.getElementById('userAvatar').textContent = currentUsername.charAt(0).toUpperCase();
+    if(document.getElementById('setUsername')) document.getElementById('setUsername').textContent = currentUsername;
+    
+    closeUserProfile();
+}
+
+// 页面加载时也要初始化一下头像字母
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('userName').textContent = currentUsername;
+    document.getElementById('userAvatar').textContent = currentUsername.charAt(0).toUpperCase();
+});
+
+let isEditingName=false;
+let ctxTargetId=null,deleteTargetId=null,longPressTimer=null;
+
+// ── Helpers ──
+
+// ════════ 智能拦截并渲染 <think> 标签 (空内容隐藏版) ════════
+function renderAIHtml(rawText) {
+    const thinkBlocks = [];
+    
+    // 1. 查找所有的 <think> 块（支持流式未闭合状态）
+    let tempText = rawText.replace(/<think>([\s\S]*?)(<\/think>|$)/gi, (match, content, closeTag) => {
+        const innerText = content.trim();
+        const isClosed = closeTag.toLowerCase() === '</think>';
+        
+        //  核心拦截：如果标签已经闭合，且里面没有任何实质内容，则直接丢弃，不渲染任何 UI
+        if (isClosed && innerText === '') {
+            return ''; 
+        }
+
+        // 使用 marked 解析 <think> 内部的内容 (如果流式输出刚开始为空，显示...)
+        const innerHtml = marked.parse(innerText || (isClosed ? '' : '...'));
+        
+        // 如果没闭合（正在流式输出），强制打开折叠面板并显示动画
+        const isOpen = isClosed ? "" : "open";
+        const statusText = isClosed ? t('thinking_process') : t('thinking');
+        const pulse = isClosed ? "" : '<div class="think-pulse"></div>';
+
+        // 组装精致的折叠面板 HTML
+        const html = `
+        <details class="think-box" ${isOpen}>
+            <summary class="think-summary">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                <span>${statusText}</span>
+                ${pulse}
+            </summary>
+            <div class="think-content">${innerHtml}</div>
+        </details>`;
+        
+        const index = thinkBlocks.length;
+        thinkBlocks.push(html);
+        // 放置一个占位符，防止外层的 marked 破坏我们拼好的 HTML
+        return `%%%THINK_BLOCK_${index}%%%`;
+    });
+
+    // 2. 用 marked 解析剩余的正常 Markdown 文本
+    let finalHtml = marked.parse(tempText);
+
+    // 3. 把占位符替换回我们组装好的折叠面板
+    thinkBlocks.forEach((blockHtml, index) => {
+        // marked 可能会用 <p> 包裹我们的占位符，所以两种情况都要替换
+        // 这里使用 split/join 替换，避免字符串内容带有 $ 符号导致正则解析异常
+        finalHtml = finalHtml.split(`<p>%%%THINK_BLOCK_${index}%%%</p>`).join(blockHtml);
+        finalHtml = finalHtml.split(`%%%THINK_BLOCK_${index}%%%`).join(blockHtml);
+    });
+
+    return finalHtml;
+}
+
+
+// ====== 模型配置与 UI 刷新 ======
+function saveModelConfig() {
+    // 增加安全检查，防止读取不存在的元素报错中断
+    const max = document.getElementById('cfgMaxTokens') ? document.getElementById('cfgMaxTokens').value : 512;
+    const ctxSize = document.getElementById('cfgContextSize') ? document.getElementById('cfgContextSize').value : 2048;
+    const threads = document.getElementById('cfgThreads') ? document.getElementById('cfgThreads').value : 4;
+    
+    localStorage.setItem('max_tokens', max);
+    localStorage.setItem('cfg_context_size', ctxSize);
+    localStorage.setItem('cfg_threads', threads);
+    
+}
+
+// ── Settings Logic ──
+
+function saveGenSettings() {
+  const ctxVal = document.getElementById('ctxSizeInput').value;
+  const sysVal = document.getElementById('sysPromptInput').value;
+  
+  configContextSize = parseInt(ctxVal) || 4096;
+  configSystemPrompt = sysVal;
+  
+  localStorage.setItem('cfg_ctx', configContextSize);
+  localStorage.setItem('cfg_sys', configSystemPrompt);
+}
+
+// 修改原有的 openSettings 函数，加入回显逻辑
+function openSettings(){
+  document.getElementById('sb').classList.remove('open');
+  document.getElementById('ov').classList.remove('show');
+  document.getElementById('setUsername').textContent=currentUsername;
+  document.getElementById('darkToggle').classList.toggle('on',document.body.classList.contains('dark'));
+  
+  // 新增：回显配置到输入框
+  document.getElementById('ctxSizeInput').value = configContextSize;
+  document.getElementById('sysPromptInput').value = configSystemPrompt;
+  updateHeaderUI(); // 确保每次打开设置时回显最新数据
+  // 在回显逻辑里加上：
+  if(document.getElementById('cfgThreads')) 
+      document.getElementById('cfgThreads').value = localStorage.getItem('cfg_threads') || '4';
+  document.getElementById('setSheetOv').classList.add('show');
+  document.getElementById('settingsSheet').classList.add('show');
+  
+}
+// ── Persistence Logic ──
+function saveChat() {
+  if (!currentChatId) return;
+  
+  const chatIndex = chatStore.findIndex(c => c.id === currentChatId);
+  
+  if (chatIndex > -1) {
+    // 更新现有对话
+    chatStore[chatIndex].messages = conversation;
+    chatStore[chatIndex].time = Date.now();
+    // 自动更新标题 (如果还叫"新对话")
+    if (chatStore[chatIndex].title === t('new_chat') && conversation.length >= 2) {
+      // 取第一条用户消息的前 10 个字做标题
+      const firstUserMsg = conversation.find(m => m.role === 'user');
+      if (firstUserMsg) {
+        chatStore[chatIndex].title = firstUserMsg.content.substring(0, 15) + (firstUserMsg.content.length>15?'...':'');
+      }
+    }
+  } else {
+    // 创建新对话 (这种情况理论上在 beginChat 时处理，但以防万一)
+    chatStore.unshift({
+      id: currentChatId,
+      title: t('new_chat'),
+      starred: false,
+      time: Date.now(),
+      messages: conversation
+    });
+  }
+  
+  // 写入本地存储
+  localStorage.setItem('Clover_chats', JSON.stringify(chatStore));
+  updateSidebarChats(); // 刷新侧边栏
+}
+function createNewChatId() {
+  return 'chat_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+}
+function toggleSB(){document.getElementById('sb').classList.toggle('open');document.getElementById('ov').classList.toggle('show');}
+function toggleTheme(){document.body.classList.toggle('dark');}
+function autoResize(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,140)+'px';}
+function toggleSendBtn(){document.getElementById('sendBtn').classList.toggle('on',document.getElementById('inp').value.trim().length>0);}
+function handleKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}}
+function scrollEnd(){const s=document.getElementById('scroll');s.scrollTop=s.scrollHeight;}
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+function findChat(id){return chatStore.find(c=>c.id===id);}
+
+function timeAgo(ts){
+  const m=Math.floor((Date.now()-ts)/60000);
+  if(m<1)return t('time_just_now');
+  if(m<60)return m + t('time_mins_ago');
+  const h=Math.floor(m/60);if(h<24)return h + t('time_hrs_ago');
+  const d=Math.floor(h/24);if(d<7)return d + t('time_days_ago');
+  return new Date(ts).toLocaleDateString();
+}
+
+function beginChat(){
+  if(!started){started=true;document.getElementById('welcome').style.display='none';document.getElementById('msgs').classList.add('active');document.getElementById('disc').classList.add('visible');}
+}
+function resetChat() {
+  started = false;
+  conversation = [];
+  currentChatId = null; // 重置 ID，下次 send 时会生成新的
+  
+  document.getElementById('welcome').style.display = '';
+  const m = document.getElementById('msgs');
+  m.classList.remove('active');
+  m.innerHTML = '';
+  document.getElementById('disc').classList.remove('visible'); // 隐藏底部栏
+  
+  document.getElementById('inp').value = '';
+  toggleSendBtn();
+  document.getElementById('sb').classList.remove('open');
+  document.getElementById('ov').classList.remove('show');
+  
+  updateSidebarChats();
+}
+
+// ══ Sidebar chat list ══
+function updateSidebarChats(){
+  const c=document.getElementById('sbChats');if(!c)return;c.innerHTML='';
+  chatStore.slice(0,5).forEach(ch=>{
+    const el=document.createElement('div');
+    el.className='sb-chat'+(ch.id===currentChatId?' active':'');
+    el.dataset.chat=ch.id;el.textContent=ch.title;
+    el.onclick=()=>loadChat(ch.id);
+    el.addEventListener('contextmenu',e=>{e.preventDefault();showCtxMenu(ch.id,e.clientX,e.clientY);});
+    let lpt;
+    el.addEventListener('touchstart',e=>{lpt=setTimeout(()=>{const t=e.touches[0];showCtxMenu(ch.id,t.clientX,t.clientY);},500);},{passive:true});
+    el.addEventListener('touchend',()=>clearTimeout(lpt));
+    el.addEventListener('touchmove',()=>clearTimeout(lpt));
+    c.appendChild(el);
+  });
+}
+
+// ══ Model Management (Real) ══
+let availableModels = [];
+
+async function initModels() {
+  try {
+    const res = await fetch(API_MODELS_URL);
+    if (!res.ok) throw new Error('Failed to fetch models');
+    const data = await res.json();
+    availableModels = data.data.map(m => ({
+      id: m.id,
+      name: m.id,
+      desc: 'Local Model'
+    }));
+    if (availableModels.length > 0 && !API_MODEL) {
+      API_MODEL = availableModels[0].id;
+    }
+    updateModelDisplay();
+  } catch (e) {
+    console.error("Connection error:", e);
+    availableModels = [{id: 'error', name: 'Connect Failed', desc: 'Check Ollama'}];
+  }
+}
+
+function renderModelOptions() {
+  const c = document.getElementById('modelOptions');
+  c.innerHTML = '';
+  availableModels.forEach(m => {
+    const sel = m.id === API_MODEL;
+    const el = document.createElement('div');
+    el.className = 'model-option'+(sel?' selected':'');
+    el.innerHTML=`<div class="mo-info"><div class="mo-name">${esc(m.name)}</div><div class="mo-desc">${esc(m.desc)}</div></div>`+(sel?'<svg class="mo-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>':'');
+    el.onclick=()=>{API_MODEL=m.id;updateModelDisplay();renderModelOptions();closeModelSheet();};
+    c.appendChild(el);
+  });
+}
+function updateModelDisplay(){
+  const name = API_MODEL || 'Select Model';
+  const ext = extendedThinking ? ' <span class="model-ext">Thinking</span>' : '';
+  const el = document.getElementById('modelName');
+  if(el) el.innerHTML = esc(name) + ext;
+}
+function openModelSheet(){renderModelOptions();document.getElementById('sheetOv').classList.add('show');document.getElementById('modelSheet').classList.add('show');}
+function closeModelSheet(){document.getElementById('sheetOv').classList.remove('show');document.getElementById('modelSheet').classList.remove('show');}
+
+function toggleExtended() {
+    extendedThinking = !extendedThinking;
+    document.getElementById('extToggle').classList.toggle('on', extendedThinking);
+    updateTopName();
+}
+
+// ══ Settings ══
+function openSettings(){
+  document.getElementById('sb').classList.remove('open');
+  document.getElementById('ov').classList.remove('show');
+  document.getElementById('setUsername').textContent=currentUsername;
+  document.getElementById('darkToggle').classList.toggle('on',document.body.classList.contains('dark'));
+  document.getElementById('setSheetOv').classList.add('show');
+  document.getElementById('settingsSheet').classList.add('show');
+}
+function closeSettings(){
+  document.getElementById('setSheetOv').classList.remove('show');
+  document.getElementById('settingsSheet').classList.remove('show');
+}
+
+// 切换参数面板的展开和折叠状态
+function toggleParams() {
+    const content = document.getElementById('paramsContent');
+    const icon = document.getElementById('paramsIcon');
+    if (content.style.display === 'none') {
+        content.style.display = 'block';
+        icon.style.transform = 'rotate(180deg)'; // 箭头翻转
+    } else {
+        content.style.display = 'none';
+        icon.style.transform = 'rotate(0deg)';   // 箭头恢复
+    }
+}
+
+function toggleDarkSetting(){
+  toggleTheme();
+  document.getElementById('darkToggle').classList.toggle('on',document.body.classList.contains('dark'));
+}
+
+// ══ Header / Menus ══
+function toggleHdrMenu(e){
+  e.stopPropagation();
+  const menu=document.getElementById('hdrMenu');
+  if(menu.classList.contains('show')){hideHdrMenu();return;}
+  const chat=findChat(currentChatId);
+  document.getElementById('hdrMenuTitle').textContent=chat?chat.title:t('new_chat');
+  if(chat){
+    // 使用 t() 动态切换文字
+    document.getElementById('hdrStarLabel').textContent = chat.starred ? t('ctx_unstar') : t('ctx_star');
+    document.getElementById('hdrStarIcon').setAttribute('fill',chat.starred?'currentColor':'none');
+  }
+  const btn=document.getElementById('hdrDotsBtn');
+  const r=btn.getBoundingClientRect();
+  menu.style.top=(r.bottom+4)+'px';
+  menu.style.right=(window.innerWidth-r.right)+'px';
+  menu.style.left='auto';
+  menu.classList.add('show');
+}
+
+function hideHdrMenu(){document.getElementById('hdrMenu').classList.remove('show');}
+function hdrAction(action){
+  hideHdrMenu();
+  if(!currentChatId&&action!=='newchat')return;
+  if(action==='rename')renameFromHeader();
+  if(action==='star'){const c=findChat(currentChatId);if(c){c.starred=!c.starred;updateSidebarChats();}}
+  if(action==='delete')showDeleteConfirm(currentChatId);
+  if(action==='newchat')resetChat();
+}
+
+function renameFromHeader(){
+  const chat=findChat(currentChatId);if(!chat)return;
+  const old=chat.title;
+  // 替换了原先的中文提示
+  const v=prompt(t('prompt_rename_chat'), old);
+  if(v!==null&&v.trim()){chat.title=v.trim();updateSidebarChats();}
+}
+
+function editUsername(){
+  if(isEditingName)return;isEditingName=true;
+  const nameEl=document.getElementById('userName'),avatarEl=document.getElementById('userAvatar'),old=currentUsername;
+  const inp=document.createElement('input');inp.type='text';inp.className='sb-name-input';inp.value=old;inp.maxLength=20;
+  nameEl.replaceWith(inp);inp.focus();inp.select();
+  function commit(){const v=inp.value.trim()||old;currentUsername=v;
+    const s=document.createElement('span');s.className='sb-name';s.id='userName';s.textContent=v;inp.replaceWith(s);
+    avatarEl.textContent=v.charAt(0).toUpperCase();isEditingName=false;}
+  inp.addEventListener('blur',commit);
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();inp.blur();}if(e.key==='Escape'){inp.value=old;inp.blur();}});
+}
+
+// ══ Chat Switching ══
+function loadChat(chatId){
+  if(typing)return;closeChatsPage();
+  if(chatId===currentChatId&&started)return;
+  started=false;conversation=[];
+  document.getElementById('welcome').style.display='';
+  const m=document.getElementById('msgs');m.classList.remove('active');m.innerHTML='';
+  document.getElementById('disc').classList.remove('visible');
+  currentChatId=chatId;const cd=findChat(chatId);if(!cd)return;
+  beginChat();cd.messages.forEach((msg,i)=>{conversation.push({...msg});msg.role==='user'?addUser(msg.content,i):addAI(msg.content,i,true);});
+  document.getElementById('sb').classList.remove('open');document.getElementById('ov').classList.remove('show');
+  updateSidebarChats();setTimeout(()=>{document.getElementById('scroll').scrollTop=0;},50);
+}
+
+// ══ Chats Page ══
+function openChatsPage(){document.getElementById('sb').classList.remove('open');document.getElementById('ov').classList.remove('show');renderChatsList();document.getElementById('chatsPage').classList.add('open');}
+function closeChatsPage(){document.getElementById('chatsPage').classList.remove('open');document.getElementById('cpSearchInput').value='';}
+function renderChatsList(filter){
+  const list=document.getElementById('cpList');list.innerHTML='';
+  const q=(filter||'').toLowerCase();
+  const filtered=chatStore.filter(c=>c.title.toLowerCase().includes(q));
+  if(!filtered.length){list.innerHTML=`<div class="cp-empty">${t('no_matching_chats')}</div>`;return;}
+  filtered.forEach(c=>{
+    const el=document.createElement('div');
+    el.className='cp-item'+(c.id===currentChatId?' selected':'');
+    el.innerHTML=`<div class="cp-item-title">${esc(c.title)}${c.starred?'<span class="cp-item-star"> ★</span>':''}</div><div class="cp-item-time">${timeAgo(c.time)}</div>`;
+    el.onclick=e=>{if(!e.target.closest('.cp-item-rename'))loadChat(c.id);};
+    el.oncontextmenu=e=>{e.preventDefault();showCtxMenu(c.id,e.clientX,e.clientY);};
+    list.appendChild(el);
+  });
+}
+function filterChats(){renderChatsList(document.getElementById('cpSearchInput').value);}
+function newChatFromChatsPage(){closeChatsPage();resetChat();}
+
+// ══ Context Menu ══
+function showCtxMenu(chatId,x,y){
+  ctxTargetId=chatId;const menu=document.getElementById('ctxMenu'),chat=findChat(chatId);
+  // 使用 t() 动态切换文字
+  document.getElementById('ctxStarLabel').textContent = chat.starred ? t('ctx_unstar') : t('ctx_star');
+  document.getElementById('ctxStarIcon').setAttribute('fill',chat.starred?'currentColor':'none');
+  menu.style.left=Math.min(x,window.innerWidth-190)+'px';menu.style.top=Math.min(y,window.innerHeight-160)+'px';menu.classList.add('show');
+}
+
+function hideCtxMenu(){document.getElementById('ctxMenu').classList.remove('show');ctxTargetId=null;}
+function ctxAction(action){
+  const id=ctxTargetId;hideCtxMenu();if(!id)return;
+  if(action==='rename')renameChatInList(id);if(action==='star')toggleStar(id);if(action==='delete')showDeleteConfirm(id);
+}
+document.addEventListener('click',e=>{if(!e.target.closest('.ctx-menu')&&!e.target.closest('.hdr-menu')&&!e.target.closest('#hdrDotsBtn'))hideCtxMenu();hideHdrMenu();});
+
+function renameChatInList(chatId){
+  const chat=findChat(chatId);if(!chat)return;
+  const item=document.querySelector('.cp-item[data-id="'+chatId+'"]');
+  // 替换了原先的中文提示
+  const v=prompt(t('prompt_rename_chat'), chat.title);
+  if(v!==null&&v.trim()){chat.title=v.trim();renderChatsList();updateSidebarChats();}
+}
+
+function toggleStar(chatId){const c=findChat(chatId);if(c){c.starred=!c.starred;renderChatsList();updateSidebarChats();}}
+function showDeleteConfirm(chatId){
+  deleteTargetId=chatId;const c=findChat(chatId);
+  document.getElementById('delMsg').textContent=t('del_chat_msg');
+  document.getElementById('delOverlay').classList.add('show');
+}
+function cancelDelete(){document.getElementById('delOverlay').classList.remove('show');deleteTargetId=null;}
+// ── Delete Logic (Fixed Persistence) ──
+
+function confirmDelete() {
+  const id = deleteTargetId;
+  document.getElementById('delOverlay').classList.remove('show');
+  deleteTargetId = null;
+
+  // 1. 从内存数组中删除
+  const idx = chatStore.findIndex(c => c.id === id);
+  if (idx > -1) {
+    chatStore.splice(idx, 1);
+    
+    // 2. 核心修复：立即同步到 localStorage
+    localStorage.setItem('Clover_chats', JSON.stringify(chatStore));
+  }
+
+  // 3. UI 处理：如果删的是当前正在看的对话，重置界面
+  if (id === currentChatId) {
+    resetChat();
+  }
+
+  // 4. 刷新列表
+  renderChatsList();
+  updateSidebarChats();
+}
+
+// ══ Message Actions ══
+function actionsHTML(){
+  // 将原先写死的 title="复制文本" 和 title="重新生成" 替换为 t() 函数
+  return `<div class="actions"><button class="act-btn" data-act="copy" title="${t('act_copy')}">${I.copy}</button><button class="act-btn" data-act="regen" title="${t('act_regen')}">${I.regen}</button></div>`;
+}
+
+function bindActs(el){el.querySelectorAll('.act-btn').forEach(btn=>{btn.onclick=function(e){e.stopPropagation();const a=this.dataset.act;if(a==='copy')doCopy(el,this);if(a==='regen')doRegen(el);};});}
+function doCopy(msgEl,btn){
+  const text=msgEl.dataset.text;
+  if(navigator.clipboard){navigator.clipboard.writeText(text).then(()=>{const orig=btn.innerHTML;btn.innerHTML=I.check;setTimeout(()=>{btn.innerHTML=orig;},1000);});}
+}
+
+async function doRegen(msgEl) {
+  // 1. 如果正在生成中，先强制停止（防止两个请求打架）
+  if (typing) {
+    stopGeneration(); 
+    // 给一点时间让 stop 完成清理
+    await new Promise(resolve => setTimeout(resolve, 50));
+  }
+
+  // 2. 在 DOM 树中往前找，找到这条 AI 消息对应的上一条 User (用户) 消息
+  let userMsgEl = msgEl.previousElementSibling;
+  while (userMsgEl && !userMsgEl.classList.contains('msg-user')) {
+      userMsgEl = userMsgEl.previousElementSibling;
+  }
+
+  if (!userMsgEl) {
+      console.error("找不到对应的用户消息，无法重新生成");
+      return;
+  }
+
+  // 提取这条 User 消息在真实对话数组中的序号
+  const userIdx = parseInt(userMsgEl.dataset.msgIdx);
+  if (isNaN(userIdx)) return;
+
+  // 3. 判断是否是最后一次对话。
+  // 因为正常的对话是 [user, ai, user, ai...]，如果 userIdx 后面还有不止一条消息，说明它不是最新的一轮
+  if (userIdx < conversation.length - 2) {
+      const confirmRegen = await uiConfirm(t('regen_confirm_msg'), t('regen_confirm_title'));
+      if (!confirmRegen) return; // 用户点击取消，直接终止
+  }
+
+  const lastUserText = conversation[userIdx].content;
+
+  // 4. 截断内存数组（保留到当前的 User 消息，砍掉这条 AI 的旧回复以及之后的所有对话）
+  conversation.splice(userIdx + 1);
+
+  // 5. 截断 UI 界面：把刚刚那条 User 消息【之后】的所有聊天气泡全部从界面上移除
+  let sibling = userMsgEl.nextElementSibling;
+  while (sibling) {
+      let nextSibling = sibling.nextElementSibling;
+      sibling.remove();
+      sibling = nextSibling;
+  }
+
+  // 6. 重新触发底层发送流程（传入 true 代表是 Regenerate，不需要在界面上再画一遍用户气泡）
+  triggerRealSend(lastUserText, true); 
+}
+
+// ══ Edit State ══
+let editMode=false, editMsgIdx=-1, editMsgEl=null, msgSheetTargetIdx=-1;
+let msgSheetText='';
+
+// ════════ 渲染用户消息 ════════
+function addUser(text, idx) {
+  const d = document.createElement('div');
+  d.className = 'msg msg-user';
+  const msgIndex = (idx !== undefined) ? idx : conversation.length - 1;
+  d.dataset.msgIdx = msgIndex;
+  
+  let displayHtml = '';
+  // 核心魔法：用正则匹配我们在 send() 里拼装的带文件的底层 Prompt
+  const fileRegex = /^\[已附加文件:\s*(.*?)\]\n<file_content>[\s\S]*?<\/file_content>(?:\n\n([\s\S]*))?$/;
+  const match = text.match(fileRegex);
+  
+  if (match) {
+      const fileName = match[1];
+      const realText = match[2] || '';
+      
+      // 渲染精致的胶囊 UI，彻底隐藏那几万字的 <file_content> 乱码
+      const capsuleHtml = `
+      <div class="file-capsule" style="margin-bottom: ${realText ? '8px' : '0'}; background: var(--bg-page); border: 1px solid var(--border); padding: 5px 12px; border-radius: 16px; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-primary); max-width: 100%;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>
+          <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500;">${esc(fileName)}</span>
+      </div>`;
+      
+      // 如果发文件时还带了文字，拼在胶囊下面
+      displayHtml = capsuleHtml + (realText ? `<div style="white-space: pre-wrap; word-break: break-word;">${esc(realText)}</div>` : '');
+  } else {
+      // 普通文本消息
+      displayHtml = `<div style="white-space: pre-wrap; word-break: break-word;">${esc(text)}</div>`;
+  }
+  
+  d.innerHTML = '<div class="bubble">' + displayHtml + '</div>';
+  const bubble = d.querySelector('.bubble');
+  bubble.onclick = () => openMsgSheet(msgIndex, text);
+  document.getElementById('msgs').appendChild(d);
+  scrollEnd();
+}
+
+function openMsgSheet(idx,text){
+  msgSheetTargetIdx=idx;msgSheetText=text;
+  document.getElementById('msgSheetOv').classList.add('show');
+  document.getElementById('msgSheet').classList.add('show');
+}
+function closeMsgSheet(){
+  document.getElementById('msgSheetOv').classList.remove('show');
+  document.getElementById('msgSheet').classList.remove('show');
+}
+function msgSheetAction(action){
+  const idx=msgSheetTargetIdx;const text=msgSheetText;closeMsgSheet();
+  if(action==='copy'){if(navigator.clipboard)navigator.clipboard.writeText(text);}
+  if(action==='edit') startEdit(idx,text);
+}
+
+function startEdit(idx,text){
+  editMode=true; editMsgIdx=idx;
+  document.getElementById('editBar').classList.add('show');
+  document.getElementById('editBanner').classList.add('show');
+  const msgs=document.getElementById('msgs').children;
+  let removing=false;
+  for(let m of msgs){
+    if(parseInt(m.dataset.msgIdx)===idx){removing=true;continue;}
+    if(removing) m.style.display='none';
+  }
+  document.getElementById('disc').classList.remove('visible');
+  const inp=document.getElementById('inp');
+  inp.value=text;autoResize(inp);toggleSendBtn();inp.focus();
+  document.getElementById('sendBtn').title = t('tooltip_update'); // 动态多语言
+}
+
+function cancelEdit(){
+  editMode=false; editMsgIdx=-1;
+  document.getElementById('editBar').classList.remove('show');
+  document.getElementById('editBanner').classList.remove('show');
+  const msgs=document.getElementById('msgs').children;
+  for(let m of msgs) m.style.display='';
+  document.getElementById('disc').classList.add('visible');
+  document.getElementById('inp').value='';autoResize(document.getElementById('inp'));toggleSendBtn();
+  document.getElementById('sendBtn').title = t('tooltip_send'); // 动态多语言
+}
+
+function commitEdit(newText){
+  conversation.splice(editMsgIdx);
+  const msgsContainer=document.getElementById('msgs');
+  const allMsgs=Array.from(msgsContainer.children);
+  allMsgs.forEach(m=>{
+    const mi=parseInt(m.dataset.msgIdx);
+    if(mi>=editMsgIdx) m.remove();
+  });
+  editMode=false; editMsgIdx=-1;
+  document.getElementById('editBar').classList.remove('show');
+  document.getElementById('editBanner').classList.remove('show');
+  document.getElementById('sendBtn').title = t('tooltip_send'); // 动态多语言
+  triggerRealSend(newText);
+}
+
+// ══ Real AI Logic (No Cursor) ══
+// 修改后的 addAI 函数
+function addAI(text, idx, staticMode) {
+  const d = document.createElement('div');
+  d.className = 'msg msg-ai';
+  d.dataset.text = text;
+  d.dataset.msgIdx = (idx !== undefined) ? idx : conversation.length - 1;
+
+  // 核心修改：去掉了 <div class="av">...</div>
+  const contentHtml = renderAIHtml(text);
+  d.innerHTML = `<div class="body"><div class="text">${contentHtml}</div>${(staticMode ? actionsHTML() : '')}</div>`;
+
+  document.getElementById('msgs').appendChild(d);
+  if (staticMode) bindActs(d);
+  scrollEnd();
+  return d;
+}
+
+// ── Global State for Interruption ──
+let abortController = null;
+
+// ── Icons ──
+// 箭头图标
+const ICON_SEND = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>`;
+// 方块图标 (模仿 Clover 停止按钮)
+const ICON_STOP = `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>`;
+
+// ── Button Logic ──
+function handleSendClick() { 
+  if(!typing) {
+    send(); 
+  } else { 
+    typing = false; 
+    Capacitor.Plugins.Llama.stop(); // 呼叫安卓底层急刹车
+    updateSendBtnState(); 
+  } 
+}
+
+// ════════ 文件读取与附件胶囊控制器 ════════
+let attachedFileName = "";
+let attachedFileContent = "";
+let attachedFileTokens = 0;
+
+async function handleFileSelect(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    showLoading(`${t('file_parsing')}${file.name}...`);
+    try {
+        let text = "";
+        if (file.name.toLowerCase().endsWith('.txt')) {
+            text = await file.text();
+        } else if (file.name.toLowerCase().endsWith('.docx')) {
+            const arrayBuffer = await file.arrayBuffer();
+            const result = await mammoth.extractRawText({ arrayBuffer: arrayBuffer });
+            text = result.value;
+        } else {
+            await uiAlert(t('file_err_format'));
+            hideLoading();
+            return;
+        }
+        
+        if (!text.trim()) {
+            await uiAlert(t('file_err_empty'));
+            hideLoading();
+            return;
+        }
+
+        attachedFileName = file.name;
+        attachedFileContent = text;
+        attachedFileTokens = Math.ceil(text.length * 1.5); 
+        
+        renderFileCapsule();
+        updateSendBtnState(); 
+    } catch (err) {
+        await uiAlert(t('file_err_read') + err.message);
+    }
+    hideLoading();
+    e.target.value = ''; 
+}
+
+function renderFileCapsule() {
+    const bar = document.getElementById('fileAttachmentBar');
+    if (!attachedFileName) {
+        bar.style.display = 'none';
+        bar.innerHTML = '';
+        return;
+    }
+    
+    const maxT = parseInt(localStorage.getItem('max_tokens') || '512');
+    const ctxS = parseInt(localStorage.getItem('cfg_context_size') || '2048');
+    const limit = ctxS - maxT - 512; 
+    
+    const isError = attachedFileTokens > limit;
+    const titleTxt = isError ? t('file_limit_exceeded') : t('file_attached');
+    
+    bar.style.display = 'flex';
+    bar.innerHTML = `
+        <div class="file-capsule ${isError ? 'error' : ''}" title="${titleTxt}">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>
+            <span class="file-capsule-name">${esc(attachedFileName)}</span>
+            <span class="file-capsule-tokens">${attachedFileTokens} tk</span>
+            <div class="file-remove" onclick="removeAttachment()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </div>
+        </div>
+    `;
+    
+    if (isError) {
+        const msg = t('file_token_err_msg').replace('{0}', attachedFileTokens).replace('{1}', limit);
+        uiAlert(msg, t('file_token_err_title'));
+    }
+}
+
+function removeAttachment() {
+    attachedFileName = "";
+    attachedFileContent = "";
+    attachedFileTokens = 0;
+    renderFileCapsule();
+    updateSendBtnState();
+}
+
+function updateSendBtnState() {
+  const btn = document.getElementById('sendBtn');
+  const inp = document.getElementById('inp');
+  const disc = document.getElementById('disc');
+  if (!btn || !inp || !disc) return;
+
+  const hasText = inp.value.trim().length > 0;
+  
+  const maxT = parseInt(localStorage.getItem('max_tokens') || '512');
+  const ctxS = parseInt(localStorage.getItem('cfg_context_size') || '2048');
+  const limit = ctxS - maxT - 512;
+  const hasValidFile = attachedFileName && (attachedFileTokens <= limit);
+  const isFileError = attachedFileName && (attachedFileTokens > limit);
+
+  const canSend = (hasText || hasValidFile) && !isFileError;
+
+  if (typing) {
+    btn.className = 'send-btn typing';
+    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>`;
+    btn.title = t('tooltip_stop'); // 动态多语言
+    disc.classList.add('visible'); 
+    disc.classList.add('typing');  
+  } else {
+    btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>`;
+    btn.title = editMode ? t('tooltip_update') : t('tooltip_send'); // 根据是否编辑模式动态切换多语言
+    
+    btn.className = canSend ? 'send-btn on' : 'send-btn';
+    
+    disc.classList.remove('typing'); 
+    if (conversation.length > 0) disc.classList.add('visible');
+    else disc.classList.remove('visible');
+  }
+}
+
+// 替换原来的 toggleSendBtn，现在统一用 updateSendBtnState
+function toggleSendBtn() {
+  if (!typing) updateSendBtnState();
+}
+
+// ── Stop Logic ──
+function stopGeneration() {
+  typing = false;
+  // 调用安卓原生的急刹车接口
+  Capacitor.Plugins.Llama.stop();
+  updateSendBtnState();
+}
+
+// ── Send Logic (Updated) ──
+async function send() {
+  const inp = document.getElementById('inp');
+  const text = inp.value.trim();
+  
+  // 发送前的终极拦截
+  const maxT = parseInt(localStorage.getItem('max_tokens') || '512');
+  const ctxS = parseInt(localStorage.getItem('cfg_context_size') || '2048');
+  const limit = ctxS - maxT - 512;
+  const hasValidFile = attachedFileName && (attachedFileTokens <= limit);
+  const isFileError = attachedFileName && (attachedFileTokens > limit);
+
+  if ((!text && !hasValidFile) || isFileError || typing) return;
+  
+  if (editMode) {
+    inp.value = ''; inp.style.height = 'auto';
+    commitEdit(text);
+    return;
+  }
+  
+  if (!currentChatId) {
+      currentChatId = createNewChatId();
+      chatStore.unshift({ id: currentChatId, title: t('new_chat'), starred: false, time: Date.now(), messages: [] });
+  }
+  saveChat(); 
+  
+  //  将附件隐蔽地拼接到最终的 Prompt 中，让 AI 阅读
+  let finalPrompt = text;
+  if (hasValidFile) {
+      // 这里的格式对大模型极为友好
+      finalPrompt = `[已附加文件: ${attachedFileName}]\n<file_content>\n${attachedFileContent}\n</file_content>\n\n${text}`.trim();
+      removeAttachment(); // 发送完毕后清空附件状态
+  }
+  
+  triggerRealSend(finalPrompt);
+}
+
+// 【修改后的 triggerRealSend：前端全量拼接架构】
+async function triggerRealSend(text, isRegen = false) {
+  const inp = document.getElementById('inp');
+  inp.value = ''; inp.style.height = 'auto'; 
+  
+  typing = true;
+  updateSendBtnState();
+  beginChat();
+
+  if (!isRegen) {
+    conversation.push({ role: 'user', content: text });
+    addUser(text, conversation.length - 1);
+  }
+
+  // 创建 AI 消息气泡占位
+  const aiId = 'msg-' + Date.now();
+  const d = document.createElement('div');
+  d.className = 'msg msg-ai';
+  d.id = aiId;
+  d.innerHTML = `<div class="body"><div class="text"><p>${t('thinking')}</p></div></div>`;
+  document.getElementById('msgs').appendChild(d);
+  scrollEnd();
+
+  // ════════ 核心融合：专属 Prompt 格式化 ════════
+  let sysP = "";
+  if (activeModelId) {
+      const activeMod = localModels.find(m => m.id === activeModelId);
+      if (activeMod && activeMod.systemPrompt) {
+          sysP = activeMod.systemPrompt;
+      }
+  }
+  
+  //  核心融合：获取当前精准时间与星期
+  const now = new Date();
+  const timeStr = now.toLocaleString('zh-CN', { 
+      year: 'numeric', month: 'long', day: 'numeric', 
+      weekday: 'long', hour: '2-digit', minute: '2-digit' 
+  });
+
+  //  使用方括号将【环境时间】与【身份信息】包装为元数据
+  let userContext = `[System Context: Current date and time is ${timeStr}. User Profile: Name is ${currentUsername}.`;
+  if (currentUserBio) userContext += ` Bio: ${currentUserBio}`;
+  userContext += `]`;
+  
+  if (sysP.trim() !== "") {
+      sysP = userContext + "\nSystem Instruction: " + sysP;
+  } else {
+      sysP = userContext;
+  }
+
+  // 1. 动态滑动窗口：根据 Context Size 精准计算
+  const maxT = parseInt(localStorage.getItem('max_tokens') || '512');
+  const ctxS = parseInt(localStorage.getItem('cfg_context_size') || '2048');
+  
+  // 粗略估算 Token 消耗 (中文通常 1.5~2 个 token，英文 0.3 个。这里取安全系数 1.5)
+  const estimateTokens = (str) => Math.ceil(str.length * 1.5);
+  
+  // 计算留给对话历史的 Token 额度 (总长度 - 生成长度 - 系统设置 - 格式标签预留)
+  let budget = ctxS - maxT - estimateTokens(sysP) - 100; 
+  if (budget < 200) budget = 200; // 最低保障额度，防止被截断
+  
+  let recentHistory = [];
+  let currentUsedTokens = 0;
+
+  // 从最新的一条消息开始往回算，直到塞满预算为止
+  for (let i = conversation.length - 1; i >= 0; i--) {
+      const msg = conversation[i];
+      const msgCost = estimateTokens(msg.content) + 15; // 15 是給 <start_of_turn> 的预留空间
+      
+      if (currentUsedTokens + msgCost > budget) {
+          break; // 超出预算，停止加入更早的历史记录 (旧记忆会被自然遗忘)
+      }
+      currentUsedTokens += msgCost;
+      recentHistory.unshift(msg); //插入到陣列頭部，保持時間順序
+  }
+
+  // ════════ 核心融合：动态识别架构与 Prompt 格式化 ════════
+  let fullPrompt = "";
+  let injectedSys = false;
+
+  // 1.  核心修复 1：智能识别架构。底层的 modelType 经常获取不到，必须用名字兜底判断
+  let arch = currentModelArch;
+  if (!arch || arch === "Unknown") {
+      const activeMod = localModels.find(m => m.id === activeModelId);
+      const searchStr = ((activeMod?.name || "") + " " + (activeMod?.fileName || "")).toLowerCase();
+      if (searchStr.includes("qwen")) arch = "Qwen";
+      else if (searchStr.includes("llama")) arch = "Llama";
+      else arch = "Gemma"; //  用户使用的是 Gemma3n，所以默认必须用 Gemma 兜底！
+  }
+
+  const isQwen = arch === "Qwen";
+  const isGemma = arch === "Gemma";
+  
+  // 2. 准备各类模型的专属控制字符
+  const sysStart = isQwen ? "<|im_start|>system\n" : (isGemma ? "" : "<<SYS>>\n");
+  const sysEnd   = isQwen ? "<|im_end|>\n" : (isGemma ? "" : "\n<</SYS>>\n\n");
+  
+  const usrStart = isQwen ? "<|im_start|>user\n" : (isGemma ? "<start_of_turn>user\n" : "[INST] ");
+  const usrEnd   = isQwen ? "<|im_end|>\n" : (isGemma ? "<end_of_turn>\n" : " [/INST]\n");
+  
+  const astStart = isQwen ? "<|im_start|>assistant\n" : (isGemma ? "<start_of_turn>model\n" : "");
+  const astEnd   = isQwen ? "<|im_end|>\n" : (isGemma ? "<end_of_turn>\n" : "\n");
+
+  // 3. 盖楼：将历史记录按架构专属格式拼装
+  const lastUserIndex = recentHistory.map(m => m.role).lastIndexOf('user');
+
+  for (let i = 0; i < recentHistory.length; i++) {
+    let msg = recentHistory[i];
+    if (msg.role === 'user') {
+      let content = msg.content;
+      
+      //  核心连接 Extended Thinking：
+      if (i === lastUserIndex && !extendedThinking) {
+          content += " /no_think"; 
+      }
+
+      if (!injectedSys) {
+          if (isQwen) {
+              fullPrompt += `${sysStart}${sysP}${sysEnd}`;
+          } else {
+              content = sysP + "\n\n" + content;
+          }
+          injectedSys = true;
+      }
+      fullPrompt += `${usrStart}${content}${usrEnd}`;
+    } else if (msg.role === 'assistant') {
+      //  核心修复 2：绝对不能把历史的 <think> 过程喂给模型！
+      // 这会导致模型严重混乱、超出上下文，并且直接输出空内容 (也就是你看到的文本消失)
+      let cleanContent = msg.content.replace(/<think>[\s\S]*?(<\/think>|$)/gi, '').trim();
+      
+      // 如果去掉 think 后没有任何内容，给个默认占位符防止格式崩溃
+      if (!cleanContent) cleanContent = t('sys_understood');
+      
+      fullPrompt += `${astStart}${cleanContent}${astEnd}`;
+    }
+  }
+
+  // 极端情况兜底
+  if (!injectedSys) {
+      if (isQwen) {
+          fullPrompt = `${sysStart}${sysP}${sysEnd}` + fullPrompt;
+      } else {
+          fullPrompt = `${usrStart}${sysP}${usrEnd}` + fullPrompt;
+      }
+  }
+
+  // 4. 点火：交接话筒，引导 AI 生成
+  fullPrompt += `${astStart}`;
+  // ════════ 組装结束 ════════
+
+  let tokenListener = null;
+  let currentResponse = ""; 
+
+  try {
+    tokenListener = await Capacitor.Plugins.Llama.addListener('onToken', (data) => {
+        if (!typing) return;
+        const p = d.querySelector('.text');
+        //修复 4：在前端 JS 累加字符 (JS 处理字符串拼接极快)
+        currentResponse += data.text; 
+
+        p.innerHTML = renderAIHtml(currentResponse);
+        d.dataset.text = currentResponse;
+        scrollEnd();
+    });
+
+    const maxT = parseInt(localStorage.getItem('max_tokens') || '512');
+    const ctxS = parseInt(localStorage.getItem('cfg_context_size') || '2048');
+    const threadCnt = parseInt(localStorage.getItem('cfg_threads') || '4'); // 新增这行读取
+    
+    // ... 前面的 generate 调用保持不变 ...
+    const result = await Capacitor.Plugins.Llama.generate({ 
+            prompt: fullPrompt, 
+            maxTokens: maxT,
+            systemPrompt: "", 
+            contextSize: ctxS,
+            threads: threadCnt
+    });
+
+    const fullResponse = result.content;
+    const pSpeed = result.promptSpeed;
+    const gSpeed = result.genSpeed;
+    
+    // ════════ 组装测速 UI ════════
+    let statsHtml = '';
+    // 如果开关开了，且拿到了速度数据
+    if (localStorage.getItem('cfg_show_speed') === 'true' && pSpeed && gSpeed) {
+        statsHtml = `<div class="msg-stats">Prompt: ${pSpeed} t/s | Gen: ${gSpeed} t/s</div>`;
+    }
+
+    const p = d.querySelector('.text');
+    // 把 Markdown 渲染结果 和 测速块 拼在一起显示
+    p.innerHTML = renderAIHtml(fullResponse) + statsHtml;
+    // 数据集依然只存纯文本，防止复制或编辑的时候把测速数据带进去
+    d.dataset.text = fullResponse;
+    
+    // 加上底部按钮操作区
+    d.querySelector('.body').insertAdjacentHTML('beforeend', actionsHTML());
+    bindActs(d);
+    
+    // 把数据保存进历史记录
+    conversation.push({ role: 'assistant', content: fullResponse });
+    saveChat();
+
+  } catch (err) {
+    console.error(err);
+    d.querySelector('.text').innerHTML = `<span style="color:red">Error: ${err.message}</span>`;
+  } finally {
+    typing = false;
+    updateSendBtnState();
+    saveChat(); 
+    if (tokenListener) {
+        tokenListener.remove();
+    }
+  }
+}
+// ── Init ──
+updateSidebarChats();
+loadChat('greeting');
+
+// 在 script 底部，initModels() 附近添加：
+// ====== 新增的文件选择与加载逻辑 ======
+// ════════ 终极引擎：分离版多模型管理与设置 (放于 script 最底部覆盖旧逻辑) ════════
+let localModels = JSON.parse(localStorage.getItem('local_models')) || [];
+let activeModelId = localStorage.getItem('active_model_id') || null;
+let currentModelArch = "Unknown"; // 新增：用于全局保存当前模型的架构类型
+
+function openModelSheet() {
+    renderModelList();
+    document.getElementById('sheetOv').classList.add('show');
+    document.getElementById('modelSheet').classList.add('show');
+    setTimeout(() => {
+        renderModelList();
+    }, 50);
+}
+function closeModelSheet() {
+    document.getElementById('sheetOv').classList.remove('show');
+    document.getElementById('modelSheet').classList.remove('show');
+    setTimeout(() => {
+        renderModelList();
+    }, 50);
+}
+
+// ════════ 拖拽排序控制器 ════════
+let draggedModelId = null;
+function handleDragStart(e) { draggedModelId = this.dataset.id; this.style.opacity = '0.4'; e.dataTransfer.effectAllowed = 'move'; }
+function handleDragOver(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; this.style.borderTop = '2px dashed var(--accent)'; }
+function handleDragLeave(e) { this.style.borderTop = 'none'; }
+function handleDragEnd(e) { this.style.opacity = '1'; document.querySelectorAll('.model-option').forEach(el => el.style.borderTop = 'none'); }
+function handleDrop(e) {
+    e.stopPropagation(); this.style.borderTop = 'none';
+    const targetId = this.dataset.id;
+    if (draggedModelId && draggedModelId !== targetId) {
+        const srcIdx = localModels.findIndex(m => m.id === draggedModelId);
+        const tgtIdx = localModels.findIndex(m => m.id === targetId);
+        if (srcIdx > -1 && tgtIdx > -1) {
+            const [moved] = localModels.splice(srcIdx, 1);
+            localModels.splice(tgtIdx, 0, moved);
+            localStorage.setItem('local_models', JSON.stringify(localModels));
+            renderModelList(); // 数据重组后立刻刷新界面
+        }
+    }
+}
+
+function renderModelList() {
+    const containers = [
+        document.getElementById('settingsModelList'),
+        document.getElementById('modelOptions')
+    ];
+    
+    containers.forEach(c => {
+        if (!c) return; 
+        c.innerHTML = ''; 
+        
+        if (localModels.length === 0) {
+            // 原来是写死的中文，现在我们用 t() 函数动态获取
+            c.innerHTML = `<div style="padding:16px;text-align:center;color:var(--text-muted);font-size:13px;">${t('empty_model_list')}</div>`; 
+            return;
+        }
+        
+        localModels.forEach(m => {
+            const isSel = m.id === activeModelId;
+            const el = document.createElement('div');
+            el.className = 'model-option' + (isSel ? ' selected' : '');
+            el.style.padding = "10px 16px"; 
+            el.style.display = "flex";
+            el.style.alignItems = "center";
+            el.style.transition = "background 0.2s, opacity 0.2s";
+            
+            // 👉 挂载 HTML5 拖拽属性和事件监听
+            el.draggable = true;
+            el.dataset.id = m.id;
+            el.addEventListener('dragstart', handleDragStart);
+            el.addEventListener('dragover', handleDragOver);
+            el.addEventListener('dragleave', handleDragLeave);
+            el.addEventListener('drop', handleDrop);
+            el.addEventListener('dragend', handleDragEnd);
+            
+            el.innerHTML = `
+          <div style="cursor:grab; padding-right:12px; color:var(--text-muted);" title="${t('drag_sort')}">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="8" x2="20" y2="8"/><line x1="4" y1="16" x2="20" y2="16"/></svg>
+          </div>
+          <div class="mo-info" style="flex:1;">
+            <div class="mo-name" style="font-size:14px;">${esc(m.name)}</div>
+            <div class="mo-desc" style="font-size:11px;">${esc(m.desc || 'Local GGUF')}</div>
+          </div>
+          </div>
+          <div style="display:flex; gap:12px; align-items:center;">
+              ${isSel ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:var(--accent);"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
+              
+              <button onclick="openModelEdit(event, '${m.id}')" style="background:none;border:none;color:var(--text-secondary);cursor:pointer;padding:4px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              </button>
+              <button onclick="deleteLocalModel(event, '${m.id}')" style="background:none;border:none;color:#D94F4F;cursor:pointer;padding:4px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              </button>
+          </div>
+      `;
+            el.onclick = (e) => { if(!e.target.closest('button')) switchModel(m.id); };
+            c.appendChild(el);
+        });
+    });
+}
+
+// 专属的卡片选项弹窗控制器
+let importResolve = null;
+function showImportModeDialog() {
+    return new Promise(resolve => {
+        importResolve = resolve;
+        document.getElementById('importModeOverlay').classList.add('show');
+    });
+}
+function resolveImport(mode) {
+    document.getElementById('importModeOverlay').classList.remove('show');
+    if (importResolve) {
+        importResolve(mode);
+        importResolve = null;
+    }
+}
+
+// 更新后的导入逻辑
+async function importNewModel() {
+    closeModelSheet();
+    try {
+        const mode = await showImportModeDialog();
+        if (!mode) return; 
+
+        if (mode === 'link' && Capacitor.getPlatform() === 'android') {
+            const perm = await Capacitor.Plugins.Llama.checkStoragePermission();
+            if (!perm.granted) {
+                await uiAlert(t('model_perm_req'), t('model_perm_title'));
+                return; 
+            }
+        } else if (mode === 'copy') {
+            await uiAlert(t('model_copy_warn'), t('model_copy_title'));
+        }
+        
+        const pickRes = await Capacitor.Plugins.Llama.pickModel({ mode: mode });
+        
+        let name = await uiPrompt(t('model_prompt_name'), t('ph_model_name'));
+        if (name === null) return;
+        if (!name.trim()) name = t('edit_unnamed');
+
+        const newId = 'mod_' + Date.now();
+        const storageType = pickRes.storageType || mode; 
+        
+        localModels.push({ 
+            id: newId, 
+            name: name, 
+            path: pickRes.path, 
+            size: pickRes.size || '未知', 
+            fileName: pickRes.originalName || '未知',
+            storageType: storageType
+        });
+        localStorage.setItem('local_models', JSON.stringify(localModels));
+        await switchModel(newId);
+        
+    } catch (e) {
+        await uiAlert(t('model_import_cancel') + e.message); 
+        updateTopName();
+    }
+}
+
+async function switchModel(id) {
+    const mod = localModels.find(m => m.id === id); if(!mod) return;
+    
+    showLoading(`${t('model_loading')}${mod.name} ...`); 
+    localStorage.removeItem('active_model_id');
+    
+    try {
+        const res = await Capacitor.Plugins.Llama.load({ path: mod.path });
+        currentModelArch = res.modelType || "Unknown"; 
+        
+        if (mod.architecture !== currentModelArch) {
+            mod.architecture = currentModelArch;
+            localStorage.setItem('local_models', JSON.stringify(localModels));
+        }
+        
+        activeModelId = id; 
+        localStorage.setItem('active_model_id', id);
+        
+    } catch(e) { 
+        await uiAlert(`${t('model_load_err')}${e.message || 'Error'}`, t('model_load_err_title')); 
+        activeModelId = null;
+        currentModelArch = "Unknown";
+    }
+    
+    hideLoading(); 
+    updateTopName(); 
+    closeModelSheet();
+    renderModelList(); 
+}
+
+async function deleteLocalModel(e, id) {
+    e.stopPropagation();
+    if(!(await uiConfirm(t('model_del_confirm'), t('model_del_title')))) return;
+    
+    const mod = localModels.find(m => m.id === id);
+    if (mod && mod.path) {
+        try {
+            await Capacitor.Plugins.Llama.deleteFile({ path: mod.path });
+        } catch (err) {
+            console.error("Delete failed", err);
+        }
+    }
+    
+    localModels = localModels.filter(m => m.id !== id);
+    localStorage.setItem('local_models', JSON.stringify(localModels));
+    if (activeModelId === id) { activeModelId = null; localStorage.removeItem('active_model_id'); }
+    renderModelList(); updateTopName();
+}
+
+window.onload = async () => {
+    updateTopName();
+    if (activeModelId) {
+        const mod = localModels.find(m => m.id === activeModelId);
+        if (mod) {
+            localStorage.removeItem('active_model_id');
+            showLoading(`${t('model_waking')}${mod.name} ...`);
+            
+            try { 
+                const res = await Capacitor.Plugins.Llama.load({ path: mod.path }); 
+                currentModelArch = res.modelType || "Unknown";
+                
+                if (mod.architecture !== currentModelArch) {
+                    mod.architecture = currentModelArch;
+                    localStorage.setItem('local_models', JSON.stringify(localModels));
+                }
+                
+                localStorage.setItem('active_model_id', activeModelId);
+                updateTopName(); 
+                
+            } catch(e) { 
+                activeModelId = null;
+                document.getElementById('modelName').innerHTML = `<span style="color:#D94F4F;">${t('model_wake_fail')}</span>`; 
+            }
+            hideLoading();
+        } else {
+            activeModelId = null;
+            localStorage.removeItem('active_model_id');
+        }
+    }
+};
+
+// 统一处理顶部标题和 Extended 标志 (已去除架构 Tag)
+function updateTopName() {
+    const mod = localModels.find(m => m.id === activeModelId);
+    const name = mod ? mod.name : t('model_top_select');
+    const ext = extendedThinking ? ' <span class="model-ext">Think</span>' : '';
+    document.getElementById('modelName').innerHTML = esc(name) + ext;
+}
+
+// --- 2. 更新打开设置时的回显逻辑 ---
+function openSettings() {
+    document.getElementById('sb').classList.remove('open');
+    document.getElementById('ov').classList.remove('show');
+    
+    document.getElementById('setUsername').textContent = currentUsername;
+    document.getElementById('darkToggle').classList.toggle('on', document.body.classList.contains('dark'));
+    
+    // 核心修复：正确读取本地保存的参数回显到输入框
+    if(document.getElementById('cfgMaxTokens')) 
+        document.getElementById('cfgMaxTokens').value = localStorage.getItem('max_tokens') || '512';
+    if(document.getElementById('cfgContextSize')) 
+        document.getElementById('cfgContextSize').value = localStorage.getItem('cfg_context_size') || '2048';
+    if(document.getElementById('cfgThreads')) 
+        document.getElementById('cfgThreads').value = localStorage.getItem('cfg_threads') || '4';
+    if(document.getElementById('cfgAccentColor')) 
+        document.getElementById('cfgAccentColor').value = currentAccentColor;
+        
+    renderModelList();
+    document.getElementById('setSheetOv').classList.add('show');
+    document.getElementById('settingsSheet').classList.add('show');
+    setTimeout(() => {
+        renderModelList();
+    }, 50);
+}
+
+function closeSettings() { 
+    document.getElementById('setSheetOv').classList.remove('show'); 
+    document.getElementById('settingsSheet').classList.remove('show'); 
+}
+function saveSettings() { 
+    localStorage.setItem('cfg_max_tokens', document.getElementById('cfgMaxTokens').value || 512); 
+}
+
+function toggleDarkSetting() {
+    toggleTheme();
+    document.getElementById('darkToggle').classList.toggle('on', document.body.classList.contains('dark'));
+}
+
+// ── 全局手势滑动控制（侧边栏 & 页面返回） ──
+let globalTouchStartX = 0;
+let globalTouchStartY = 0;
+
+document.addEventListener('touchstart', (e) => {
+    // 记录手指按下的初始坐标
+    globalTouchStartX = e.changedTouches[0].screenX;
+    globalTouchStartY = e.changedTouches[0].screenY;
+}, { passive: true });
+
+document.addEventListener('touchend', (e) => {
+    const touchEndX = e.changedTouches[0].screenX;
+    const touchEndY = e.changedTouches[0].screenY;
+    
+    const deltaX = touchEndX - globalTouchStartX;
+    const deltaY = touchEndY - globalTouchStartY;
+
+    // 判断：横向位移必须大于纵向位移（防止上下滚动时误触），且滑动距离超过 50px
+    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 50) {
+        
+        const sb = document.getElementById('sb');
+        const ov = document.getElementById('ov');
+        const isSidebarOpen = sb.classList.contains('open');
+        
+        // 检查当前是否有其他全屏页面覆盖在上面
+        const isSettingsOpen = document.getElementById('settingsSheet').classList.contains('show');
+        const isChatsPageOpen = document.getElementById('chatsPage').classList.contains('open');
+
+        if (deltaX > 0) {
+            // 👉 向右滑动 (从左往右)
+            
+            // 1. 如果在主对话界面，且没有其他页面遮挡 -> 呼出侧边栏
+            if (!isSidebarOpen && !isSettingsOpen && !isChatsPageOpen) {
+                sb.classList.add('open');
+                ov.classList.add('show');
+            }
+            // 2. 如果在设置页面 (由于设置是从右侧划出的，所以向右滑刚好是返回)
+            if (isSettingsOpen) {
+                closeSettings();
+            }
+            // 3. 如果在对话记录页 (ChatsPage也是从右侧划出，向右滑返回主界面)
+            if (isChatsPageOpen) {
+                closeChatsPage();
+            }
+        } else {
+            // 👈 向左滑动 (从右往左)
+            
+            // 1. 如果侧边栏开着 -> 收起侧边栏，回到主界面
+            if (isSidebarOpen) {
+                sb.classList.remove('open');
+                ov.classList.remove('show');
+            }
+        }
+    }
+}, { passive: true });
+
+// 覆盖页面的初始化事件
+window.onload = async () => {
+    updateTopName();
+    if (activeModelId) {
+        const mod = localModels.find(m => m.id === activeModelId);
+        if (mod) {
+            document.getElementById('modelName').innerText = t('model_loading');
+            try { await Capacitor.Plugins.Llama.load({ path: mod.path }); updateTopName(); } 
+            catch(e) { document.getElementById('modelName').innerText = t('model_wake_fail'); }
+        }
+    }
+};
+
+// ── 手势滑动返回逻辑 ──
+let touchStartX = 0;
+const settingsSheetEl = document.getElementById('settingsSheet');
+
+settingsSheetEl.addEventListener('touchstart', (e) => {
+    touchStartX = e.changedTouches[0].screenX;
+}, { passive: true });
+
+settingsSheetEl.addEventListener('touchend', (e) => {
+    const touchEndX = e.changedTouches[0].screenX;
+    // 如果手指从左向右滑动的距离超过 60 像素，则触发关闭设置面板
+    if (touchEndX - touchStartX > 60) {
+        closeSettings();
+    }
+}, { passive: true });
+
+// ── 模型专属设置逻辑 ──
+let editingModelId = null;
+
+function openModelEdit(e, id) {
+    e.stopPropagation(); 
+    const mod = localModels.find(m => m.id === id);
+    if (!mod) return;
+    
+    editingModelId = id;
+    document.getElementById('editModelName').value = mod.name || '';
+    document.getElementById('editModelDesc').value = mod.desc || '';
+    document.getElementById('editModelSysPrompt').value = mod.systemPrompt || '';
+    
+    document.getElementById('editModelFileName').innerText = mod.fileName || t('edit_unknown');
+    document.getElementById('editModelSize').innerText = mod.size || t('edit_unknown');
+    
+    const archSpan = document.getElementById('editModelArch');
+    if (mod.architecture && mod.architecture !== "Unknown") {
+        archSpan.innerText = mod.architecture;
+        archSpan.style.background = 'var(--accent)'; 
+    } else {
+        archSpan.innerText = 'Unknown';
+        archSpan.style.background = 'var(--text-muted)'; 
+    }
+    
+    const storageSpan = document.getElementById('editModelStorage');
+    if (storageSpan) {
+        if (mod.storageType === 'copy' || mod.storageType === 'internal') {
+            storageSpan.innerText = 'Internal';
+            storageSpan.style.background = 'var(--text-muted)';
+            storageSpan.style.color = '#fff';
+        } else {
+            storageSpan.innerText = 'External';
+            storageSpan.style.background = 'var(--accent)';
+            storageSpan.style.color = '#fff';
+        }
+    }
+    document.getElementById('modelEditOverlay').classList.add('show');
+}
+
+function closeModelEdit() {
+    document.getElementById('modelEditOverlay').classList.remove('show');
+    editingModelId = null;
+}
+
+function saveModelEdit() {
+    if (!editingModelId) return;
+    const mod = localModels.find(m => m.id === editingModelId);
+    if (mod) {
+        mod.name = document.getElementById('editModelName').value.trim() || t('edit_unnamed');
+        mod.desc = document.getElementById('editModelDesc').value.trim();
+        mod.systemPrompt = document.getElementById('editModelSysPrompt').value;
+        
+        localStorage.setItem('local_models', JSON.stringify(localModels));
+        renderModelList(); 
+        updateTopName();   
+    }
+    closeModelEdit();
+}
+
+// 控制测速显示的开关逻辑
+function toggleSpeedSetting() {
+    const isON = localStorage.getItem('cfg_show_speed') === 'true';
+    localStorage.setItem('cfg_show_speed', !isON);
+    document.getElementById('speedToggle').classList.toggle('on', !isON);
+}
+
+// 记得在 openSettings() 函数里加上这行，让开关每次打开时正确回显：
+document.getElementById('speedToggle').classList.toggle('on', localStorage.getItem('cfg_show_speed') === 'true');
+</script>
+</body>
+</html>
