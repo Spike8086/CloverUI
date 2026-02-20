@@ -5,9 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
 <title>Clover</title>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600&family=Source+Serif+4:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
 <style>
-/* 保持你的 CSS 样式完全不变 */
+
 :root { --bg-page: #F3EDE5; --bg-chat: #FAF7F2; --bg-sidebar: #F3EDE5; --bg-input: #FFFFFF; --bg-user-bubble: #E8E0D5; --bg-hover: rgba(0,0,0,0.04); --text-primary: #1F1E1B; --text-secondary: #6B6560; --text-muted: #AEA89F; --accent: var(--accent); --border: #E2DBD1; --input-shadow: 0 1px 12px rgba(0,0,0,0.06); --scrollbar-thumb: #D5CFC5; }
 .dark { --bg-page: #191714; --bg-chat: #191714; --bg-sidebar: #191714; --bg-input: #2A2622; --bg-user-bubble: #35302B; --bg-hover: rgba(255,255,255,0.06); --text-primary: #E5DFD6; --text-secondary: #938E86; --text-muted: #5C5750; --border: #2E2A25; --input-shadow: 0 1px 12px rgba(0,0,0,0.25); --scrollbar-thumb: #3A3530; }
 *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
@@ -1201,7 +1202,7 @@ body { font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI
   </div>
 </div>
 
-<div class="del-overlay" id="uiDialogOverlay" style="z-index: 3000;">
+<div class="del-overlay" id="uiDialogOverlay" style="z-index: 3500;">
   <div class="del-dialog" style="max-width: 320px; width: 90%; text-align: center; padding: 28px 24px;">
     <h3 id="uiDialogTitle" style="margin-bottom: 12px; font-size: 18px;">提示</h3>
     <p id="uiDialogMsg" style="font-size: 14.5px; color: var(--text-secondary); margin-bottom: 20px; line-height: 1.5;"></p>
@@ -2436,8 +2437,12 @@ async function handleFileSelect(e) {
         renderFileCapsule();
         updateSendBtnState(); 
     } catch (err) {
+        //Repair Dead Lock
+        hideLoading(); 
         await uiAlert(t('file_err_read') + err.message);
+        return;
     }
+    // After Parsing Offload
     hideLoading();
     e.target.value = ''; 
 }
