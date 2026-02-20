@@ -1,4 +1,4 @@
-# CloverUI
+# CloverUI☘️
 
 CloverUI is an Android application designed for local Large Language Model (LLM) inference. It provides a graphical interface to load and interact with GGUF format models entirely offline.
 
