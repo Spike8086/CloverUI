@@ -1,6 +1,6 @@
 {
   "appId": "com.example.app",
-  "appName": "CloverAI",
+  "appName": "CloverPal",
   "webDir": "www",
   "bundledWebRuntime": false,
   "plugins": {
