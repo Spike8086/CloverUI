@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.22.1)
 project("clover-bridge")
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=armv8.4-a+dotprod+i8mm+fp16")
 # 设置 JNI 库的路径
 set(JNI_LIBS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../jniLibs/${ANDROID_ABI})
 
