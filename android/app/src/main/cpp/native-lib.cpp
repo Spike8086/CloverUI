@@ -36,7 +36,7 @@ Java_com_example_app_LlamaPlugin_nativeLoadModel(JNIEnv *env, jobject thiz, jstr
     struct llama_model_params mparams = llama_model_default_params();
     // 【核心修復 1】：強制禁用 GPU (Vulkan)，徹底避開 Adreno 驅動的 Shader 編譯崩潰
     mparams.n_gpu_layers = 0;
-    mparams.use_mmap = false;
+    mparams.use_mmap = true;
     model = llama_model_load_from_file(model_path.c_str(), mparams);
 
     if (!model) return env->NewStringUTF("Error: 模型讀取失敗");
@@ -104,6 +104,7 @@ Java_com_example_app_LlamaPlugin_nativeGenerate(JNIEnv *env, jobject thiz, jstri
     cparams.n_ctx = context_size; // 应用设置
     // 陷阱 1 修复 (上)：將單次計算批次限制在手機甜點區間 (512)
     cparams.n_batch = 512;
+    cparams.n_ubatch = 512;
     // ======================================
     int safe_threads = (threads > 0) ? threads : 4;
 
