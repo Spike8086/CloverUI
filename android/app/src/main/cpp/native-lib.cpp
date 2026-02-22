@@ -182,26 +182,46 @@ Java_com_example_app_LlamaPlugin_nativeGenerate(JNIEnv *env, jobject thiz, jstri
     auto t_gen_start = std::chrono::high_resolution_clock::now();
     int gen_count = 0; // 记录真实吐了多少个 Token
 
+    std::string token_buffer = "";
+    auto last_ui_update = std::chrono::high_resolution_clock::now();
+
     while (n_cur <= n_tokens + n_decode) {
-        // 检查全局取消标志（对应 nativeStop）
         if (cancel_generation) break;
 
         llama_token id = llama_sampler_sample(smpl, ctx, -1);
         llama_sampler_accept(smpl, id);
 
-        if (llama_vocab_is_eog(vocab, id)) break;
+        if (llama_vocab_is_eog(vocab, id)) {
+            // 结束前确保最后一点数据也发出去
+            if (onTokenMethod != nullptr && !token_buffer.empty()) {
+                jbyteArray jbytes = env->NewByteArray((jsize)token_buffer.length());
+                env->SetByteArrayRegion(jbytes, 0, (jsize)token_buffer.length(), (const jbyte*)token_buffer.c_str());
+                env->CallVoidMethod(thiz, onTokenMethod, jbytes);
+                env->DeleteLocalRef(jbytes);
+            }
+            break;
+        }
 
         char buf[128];
         int n = llama_token_to_piece(vocab, id, buf, sizeof(buf), 0, true);
         if (n > 0) {
             std::string new_piece(buf, n);
-            result += new_piece; // C++ 依然自己记录完整结果用于最后返回
-            // 修复 3：只把这个"新字"传给 Java，别传整个句子
-            if (onTokenMethod != nullptr) {
-                jbyteArray jbytes = env->NewByteArray((jsize)new_piece.length());
-                env->SetByteArrayRegion(jbytes, 0, (jsize)new_piece.length(), (const jbyte*)new_piece.c_str());
-                env->CallVoidMethod(thiz, onTokenMethod, jbytes);
-                env->DeleteLocalRef(jbytes);
+            result += new_piece;       // 依然记录完整结果
+            token_buffer += new_piece; // 塞入当前发送缓冲区
+
+            auto now = std::chrono::high_resolution_clock::now();
+            auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(now - last_ui_update).count();
+
+            // 2. 核心魔法：只在间隔超过 50 毫秒时，才跨越 JNI 发送一次
+            if (elapsed_ms >= 50) {
+                if (onTokenMethod != nullptr && !token_buffer.empty()) {
+                    jbyteArray jbytes = env->NewByteArray((jsize)token_buffer.length());
+                    env->SetByteArrayRegion(jbytes, 0, (jsize)token_buffer.length(), (const jbyte*)token_buffer.c_str());
+                    env->CallVoidMethod(thiz, onTokenMethod, jbytes);
+                    env->DeleteLocalRef(jbytes);
+                }
+                token_buffer.clear(); // 清空缓冲区
+                last_ui_update = now; // 重置计时器
             }
         }
 
