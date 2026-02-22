@@ -2,10 +2,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Inference_Engine-llama.cpp-00599C?style=flat-square&logo=c%2B%2B&logoColor=white" alt="Engine">
   <img src="https://img.shields.io/badge/Optimization-ARMv8.4_DotProd-E34F26?style=flat-square&logo=arm&logoColor=white" alt="ARM Optimization">
-  
   <img src="https://img.shields.io/badge/Supported_Format-GGUF-333333?style=flat-square&logo=gitbook&logoColor=white" alt="GGUF Support">
-  
-  <img src="https://img.shields.io/badge/Feature-Soft_Thinking-8A2BE2?style=flat-square&logo=probot&logoColor=white" alt="Soft Thinking">
   <img src="https://img.shields.io/badge/Privacy-100%25_On--Device-4CAF50?style=flat-square&logo=shield&logoColor=white" alt="On Device">
 </p>
 
