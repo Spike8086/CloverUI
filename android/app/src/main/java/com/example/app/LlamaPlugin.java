@@ -174,8 +174,6 @@ public class LlamaPlugin extends Plugin {
         isGenerating = true;
 
         new Thread(() -> {
-            //强制要求分配超大核
-            android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_URGENT_DISPLAY);
             try {
                 // 【修改点 3】将 maxTokens 传给 C++
                 byte[] bytes = nativeGenerate(prompt, maxTokens, systemPrompt, contextSize, threads);
